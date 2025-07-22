@@ -2726,16 +2726,10 @@ async function handleFriendRequestResponse(fromUserId, accepted) {
       // Add to friends table if accepted
       const { error: friendError } = await supabase
         .from('friends')
-        .insert([
-          {
-            user_id: currentUser.id,
-            friend_id: fromUserId
-          },
-          {
-            user_id: fromUserId,
-            friend_id: currentUser.id
-          }
-        ]);
+        .insert([{
+          user_id_1: currentUser.id,
+          user_id_2: fromUserId
+        }]);
 
       if (friendError) throw friendError;
     }
@@ -2796,8 +2790,7 @@ async function updateFriendButtonState(currentUserId, targetUserId, button) {
     const { data: friendData, error: friendError } = await supabase
       .from('friends')
       .select('*')
-      .eq('user_id', currentUserId)
-      .eq('friend_id', targetUserId)
+      .or(`and(user_id_1.eq.${currentUserId},user_id_2.eq.${targetUserId}),and(user_id_1.eq.${targetUserId},user_id_2.eq.${currentUserId})`)
       .maybeSingle();
 
     if (friendError) throw friendError;
@@ -2849,7 +2842,7 @@ async function removeFriend(friendId) {
     const { error } = await supabase
       .from('friends')
       .delete()
-      .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUser.id})`);
+      .or(`and(user_id_1.eq.${currentUser.id},user_id_2.eq.${friendId}),and(user_id_1.eq.${friendId},user_id_2.eq.${currentUser.id})`);
 
     if (error) throw error;
 
@@ -2876,5 +2869,114 @@ async function removeFriend(friendId) {
       title: 'Error',
       message: 'Failed to remove friend.'
     });
+  }
+}
+
+// Load friends list
+async function loadFriendsList() {
+  const container = document.querySelector('.friends-content');
+  if (!container) return;
+
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    if (!currentUser) return;
+
+    // Show loading state
+    container.innerHTML = `
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+        Loading friends...
+      </div>
+    `;
+
+    // Get all friends with user details
+    const { data: friends, error } = await supabase
+      .from('friends')
+      .select(`
+        user_id_1,
+        user_id_2,
+        users1:user_id_1(id, username, avatar_url),
+        users2:user_id_2(id, username, avatar_url)
+      `)
+      .or(`user_id_1.eq.${currentUser.id},user_id_2.eq.${currentUser.id}`);
+
+    if (error) throw error;
+
+    // Process friends data
+    const friendsList = friends.map(friend => {
+      // Get the other user's data (not current user)
+      const otherUser = friend.user_id_1 === currentUser.id ? friend.users2 : friend.users1;
+      return {
+        id: otherUser.id,
+        username: otherUser.username,
+        avatar_url: otherUser.avatar_url
+      };
+    });
+
+    // For demo: randomly assign online/offline status
+    const online = friendsList.filter((_, i) => i % 2 === 0);
+    const offline = friendsList.filter((_, i) => i % 2 !== 0);
+
+    let html = `<div class="friends-header"><h3>FRIENDS</h3></div>`;
+
+    if (online.length) {
+      html += `<div class="friend-category"><h4>ONLINE — ${online.length}</h4>${online.map(friend => `
+        <div class="friend-item" data-user-id="${friend.id}">
+          <div class="friend-avatar">
+            <div class="status-indicator online"></div>
+            <img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+          </div>
+          <div class="friend-info">
+            <div class="friend-name">${friend.username}</div>
+            <div class="friend-status">Online</div>
+          </div>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    if (offline.length) {
+      html += `<div class="friend-category"><h4>OFFLINE — ${offline.length}</h4>${offline.map(friend => `
+        <div class="friend-item" data-user-id="${friend.id}">
+          <div class="friend-avatar">
+            <div class="status-indicator offline"></div>
+            <img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+          </div>
+          <div class="friend-info">
+            <div class="friend-name">${friend.username}</div>
+            <div class="friend-status">Offline</div>
+          </div>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    if (!online.length && !offline.length) {
+      html += `
+        <div class="empty-state">
+          <i class="fas fa-user-friends"></i>
+          <p>No friends yet</p>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+
+    // Add click handlers to friend items
+    container.querySelectorAll('.friend-item').forEach(item => {
+      item.onclick = (e) => {
+        const userId = item.dataset.userId;
+        if (userId) {
+          showUserProfileModal(userId, e);
+        }
+      };
+    });
+
+  } catch (error) {
+    console.error('Error loading friends:', error);
+    container.innerHTML = `
+      <div class="error-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>Failed to load friends</p>
+      </div>
+    `;
   }
 }
