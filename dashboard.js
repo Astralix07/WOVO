@@ -2593,146 +2593,176 @@ window.socket.on('test-reply', (data) => {
 });
 
 // Initialize Socket.IO connection
-const socket = io('https://wovo-server.onrender.com', {
-  transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
-  reconnectionAttempts: 5, // Try to reconnect 5 times
-  reconnectionDelay: 1000, // Wait 1 second between attempts
-  timeout: 10000 // Connection timeout after 10 seconds
-});
+const socket = io(window.location.origin);
 
-// Add connection status handling
-socket.on('connect', () => {
-  console.log('Connected to Socket.IO server');
+// Connect and authenticate with Socket.IO
+document.addEventListener('DOMContentLoaded', () => {
   const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-  if (currentUser) {
-    socket.emit('user_connected', currentUser.id);
+  if (currentUser?.id) {
+    socket.emit('authenticate', currentUser.id);
   }
 });
 
-socket.on('connect_error', (error) => {
-  console.error('Socket.IO connection error:', error);
-});
-
-socket.on('disconnect', (reason) => {
-  console.log('Disconnected from Socket.IO server:', reason);
-});
-
-// Remove the duplicate DOMContentLoaded event listener since we handle it in connect event
-// ... rest of existing code ...
-
 // Notification System
-function showNotification(data, type = 'friend_request') {
+function showNotification(options) {
   const container = document.getElementById('notificationContainer');
   if (!container) return;
 
   const notification = document.createElement('div');
   notification.className = 'notification';
   
-  if (type === 'friend_request') {
-    notification.innerHTML = `
-      <div class="notification-avatar">
-        <img src="${data.fromAvatarUrl || 'assets/default-avatar.png'}" alt="${data.fromUsername}">
-      </div>
-      <div class="notification-content">
-        <div class="notification-header">
-          <div class="notification-title">${data.fromUsername}</div>
-          <button class="notification-close" onclick="closeNotification(this.parentElement.parentElement.parentElement)">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="notification-message">Sent you a friend request</div>
-        <div class="notification-actions">
-          <button class="notification-btn accept" onclick="handleFriendRequestResponse('${data.fromUserId}', true, this.parentElement.parentElement.parentElement)">
-            Accept
-          </button>
-          <button class="notification-btn reject" onclick="handleFriendRequestResponse('${data.fromUserId}', false, this.parentElement.parentElement.parentElement)">
-            Reject
-          </button>
-        </div>
-      </div>
-    `;
-  } else if (type === 'friend_response') {
-    const responseText = data.accepted ? 'accepted' : 'rejected';
-    notification.innerHTML = `
-      <div class="notification-avatar">
-        <img src="${data.fromAvatarUrl || 'assets/default-avatar.png'}" alt="${data.fromUsername}">
-      </div>
-      <div class="notification-content">
-        <div class="notification-header">
-          <div class="notification-title">${data.fromUsername}</div>
-          <button class="notification-close" onclick="closeNotification(this.parentElement.parentElement.parentElement)">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="notification-message">
-          ${data.fromUsername} ${responseText} your friend request
-        </div>
+  let actionsHtml = '';
+  if (options.type === 'friend_request') {
+    actionsHtml = `
+      <div class="notification-actions">
+        <button class="notification-btn accept" onclick="handleFriendRequestResponse('${options.fromUser.id}', true)">Accept</button>
+        <button class="notification-btn reject" onclick="handleFriendRequestResponse('${options.fromUser.id}', false)">Reject</button>
       </div>
     `;
   }
+
+  notification.innerHTML = `
+    <div class="notification-content">
+      <div class="notification-title">
+        ${options.type === 'friend_request' ? '<i class="fas fa-user-plus"></i>' : ''}
+        ${options.title}
+      </div>
+      <div class="notification-message">${options.message}</div>
+      ${actionsHtml}
+    </div>
+    <button class="notification-close" onclick="this.closest('.notification').remove()">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
 
   container.appendChild(notification);
+  requestAnimationFrame(() => notification.classList.add('show'));
 
-  // Remove notification after 5 seconds
-  setTimeout(() => {
-    if (notification.parentElement) {
-      notification.classList.add('removing');
-      setTimeout(() => {
-        if (notification.parentElement) {
-          notification.parentElement.removeChild(notification);
-        }
-      }, 300);
-    }
-  }, 5000);
+  // Auto remove after 5 seconds if not a friend request
+  if (options.type !== 'friend_request') {
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => notification.remove(), 300);
+    }, 5000);
+  }
 }
 
-// Close notification
-window.closeNotification = function(notification) {
-  if (notification) {
-    notification.classList.add('removing');
-    setTimeout(() => {
-      if (notification.parentElement) {
-        notification.parentElement.removeChild(notification);
-      }
-    }, 300);
-  }
-};
+// Handle incoming friend request
+socket.on('friend_request', (data) => {
+  showNotification({
+    type: 'friend_request',
+    title: 'Friend Request',
+    message: `${data.fromUser.username} sent you a friend request!`,
+    fromUser: data.fromUser
+  });
+});
 
 // Handle friend request response
-window.handleFriendRequestResponse = async function(fromUserId, accepted, notification) {
-  const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-  if (!currentUser) return;
+socket.on('friend_request_response', (data) => {
+  showNotification({
+    type: 'response',
+    title: 'Friend Request ' + (data.accepted ? 'Accepted' : 'Rejected'),
+    message: `${data.fromUser.username} ${data.accepted ? 'accepted' : 'rejected'} your friend request.`
+  });
+});
 
+// Send friend request
+async function sendFriendRequest(toUserId) {
   try {
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    if (!currentUser) return;
+
+    // First, send the request to Supabase
+    const { error } = await supabase
+      .from('friend_requests')
+      .insert([{
+        from_user_id: currentUser.id,
+        to_user_id: toUserId,
+        status: 'pending'
+      }]);
+
+    if (error) throw error;
+
+    // Then, notify the user through Socket.IO
+    socket.emit('send_friend_request', {
+      toUserId: toUserId,
+      fromUser: {
+        id: currentUser.id,
+        username: currentUser.username
+      }
+    });
+
+    showNotification({
+      type: 'success',
+      title: 'Request Sent',
+      message: 'Friend request sent successfully!'
+    });
+
+  } catch (error) {
+    showNotification({
+      type: 'error',
+      title: 'Error',
+      message: 'Failed to send friend request.'
+    });
+  }
+}
+
+// Handle friend request response
+async function handleFriendRequestResponse(fromUserId, accepted) {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    if (!currentUser) return;
+
+    // Update request status in Supabase
+    const { error: updateError } = await supabase
+      .from('friend_requests')
+      .update({ status: accepted ? 'accepted' : 'rejected' })
+      .eq('from_user_id', fromUserId)
+      .eq('to_user_id', currentUser.id);
+
+    if (updateError) throw updateError;
+
     if (accepted) {
-      // Add to friends table in Supabase
+      // Add to friends table if accepted
       const { error: friendError } = await supabase
         .from('friends')
         .insert([
-          { user_id: currentUser.id, friend_id: fromUserId },
-          { user_id: fromUserId, friend_id: currentUser.id }
+          {
+            user_id: currentUser.id,
+            friend_id: fromUserId
+          },
+          {
+            user_id: fromUserId,
+            friend_id: currentUser.id
+          }
         ]);
 
       if (friendError) throw friendError;
     }
 
-    // Delete the friend request from Supabase
-    const { error: deleteError } = await supabase
-      .from('friend_requests')
-      .delete()
-      .match({ from_user_id: fromUserId, to_user_id: currentUser.id });
-
-    if (deleteError) throw deleteError;
-
-    // Emit response via Socket.IO
+    // Notify the sender through Socket.IO
     socket.emit('friend_request_response', {
-      fromUserId: fromUserId,
-      toUserId: currentUser.id,
-      accepted: accepted
+      toUserId: fromUserId,
+      accepted: accepted,
+      fromUser: {
+        id: currentUser.id,
+        username: currentUser.username
+      }
     });
 
-    // Close the notification
-    closeNotification(notification);
+    // Remove the notification
+    const notification = document.querySelector(`.notification[data-from-user="${fromUserId}"]`);
+    if (notification) {
+      notification.classList.remove('show');
+      setTimeout(() => notification.remove(), 300);
+    }
+
+    // Show success message
+    showNotification({
+      type: 'success',
+      title: 'Success',
+      message: `Friend request ${accepted ? 'accepted' : 'rejected'}.`
+    });
 
     // Refresh friends list if accepted
     if (accepted && typeof loadFriendsList === 'function') {
@@ -2740,59 +2770,111 @@ window.handleFriendRequestResponse = async function(fromUserId, accepted, notifi
     }
 
   } catch (error) {
-    console.error('Error handling friend request:', error);
-    showNotification('Failed to process friend request', 'error');
-  }
-};
-
-// Update sendFriendRequest function to use Socket.IO
-async function sendFriendRequest(userId) {
-  const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-  if (!currentUser || userId === currentUser.id) return;
-
-  try {
-    // First check if request already exists
-    const { data: existingRequest } = await supabase
-      .from('friend_requests')
-      .select('*')
-      .match({ from_user_id: currentUser.id, to_user_id: userId })
-      .single();
-
-    if (existingRequest) {
-      showNotification('Friend request already sent', 'info');
-      return;
-    }
-
-    // Insert friend request into Supabase
-    const { error } = await supabase
-      .from('friend_requests')
-      .insert([{
-        from_user_id: currentUser.id,
-        to_user_id: userId
-      }]);
-
-    if (error) throw error;
-
-    // Emit socket event
-    socket.emit('send_friend_request', {
-      fromUserId: currentUser.id,
-      toUserId: userId,
-      fromUsername: currentUser.username,
-      fromAvatarUrl: currentUser.avatar_url
+    showNotification({
+      type: 'error',
+      title: 'Error',
+      message: `Failed to ${accepted ? 'accept' : 'reject'} friend request.`
     });
-
-    showNotification('Friend request sent successfully!', 'success');
-  } catch (error) {
-    console.error('Error sending friend request:', error);
-    showNotification('Failed to send friend request', 'error');
   }
 }
 
-// Listen for friend request events
-socket.on('friend_request_received', (data) => {
-  showNotification(data, 'friend_request');
-});
+// Update the existing showNotification function to use the new system
+window.showNotification = function(message, type = 'info') {
+  showNotification({
+    type: type,
+    title: type.charAt(0).toUpperCase() + type.slice(1),
+    message: message
+  });
+};
 
-socket.on('friend_request_responded', (data) => {
-  showNotification(data, 'friend_response');
-});
+// Update friend button state
+async function updateFriendButtonState(currentUserId, targetUserId, button) {
+  if (!button || currentUserId === targetUserId) return;
+
+  try {
+    // Check if already friends
+    const { data: friendData, error: friendError } = await supabase
+      .from('friends')
+      .select('*')
+      .eq('user_id', currentUserId)
+      .eq('friend_id', targetUserId)
+      .maybeSingle();
+
+    if (friendError) throw friendError;
+
+    if (friendData) {
+      button.innerHTML = '<i class="fas fa-user-minus"></i> Remove Friend';
+      button.onclick = () => removeFriend(targetUserId);
+      return;
+    }
+
+    // Check for pending requests
+    const { data: requestData, error: requestError } = await supabase
+      .from('friend_requests')
+      .select('*')
+      .or(`and(from_user_id.eq.${currentUserId},to_user_id.eq.${targetUserId}),and(from_user_id.eq.${targetUserId},to_user_id.eq.${currentUserId})`)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (requestError) throw requestError;
+
+    if (requestData) {
+      if (requestData.from_user_id === currentUserId) {
+        button.innerHTML = '<i class="fas fa-clock"></i> Request Sent';
+        button.disabled = true;
+      } else {
+        button.innerHTML = '<i class="fas fa-user-plus"></i> Accept Request';
+        button.onclick = () => handleFriendRequestResponse(targetUserId, true);
+      }
+      return;
+    }
+
+    // No relationship exists
+    button.innerHTML = '<i class="fas fa-user-plus"></i> Add Friend';
+    button.onclick = () => sendFriendRequest(targetUserId);
+
+  } catch (error) {
+    console.error('Error updating friend button:', error);
+    button.innerHTML = '<i class="fas fa-user-plus"></i> Add Friend';
+    button.onclick = () => sendFriendRequest(targetUserId);
+  }
+}
+
+// Remove friend
+async function removeFriend(friendId) {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    if (!currentUser) return;
+
+    const { error } = await supabase
+      .from('friends')
+      .delete()
+      .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUser.id})`);
+
+    if (error) throw error;
+
+    showNotification({
+      type: 'success',
+      title: 'Friend Removed',
+      message: 'Friend has been removed successfully.'
+    });
+
+    // Refresh friends list
+    if (typeof loadFriendsList === 'function') {
+      loadFriendsList();
+    }
+
+    // Update button state
+    const addFriendBtn = document.getElementById('addFriendBtn');
+    if (addFriendBtn) {
+      updateFriendButtonState(currentUser.id, friendId, addFriendBtn);
+    }
+
+  } catch (error) {
+    showNotification({
+      type: 'error',
+      title: 'Error',
+      message: 'Failed to remove friend.'
+    });
+  }
+}
