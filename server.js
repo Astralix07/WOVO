@@ -34,10 +34,37 @@ app.use((req, res) => {
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  // Example: handle a custom event
-  socket.on('test', (data) => {
-    console.log('Test event received:', data);
-    socket.emit('test-reply', { msg: 'Hello from server!' });
+  // Store user ID when they connect
+  socket.on('user_connected', (userId) => {
+    console.log('User identified:', userId);
+    socket.userId = userId;
+    socket.join(`user_${userId}`); // Join a room specific to this user
+  });
+
+  // Handle friend request
+  socket.on('send_friend_request', async (data) => {
+    const { fromUserId, toUserId, fromUsername, fromAvatarUrl } = data;
+    
+    // Emit to the specific user's room
+    io.to(`user_${toUserId}`).emit('friend_request_received', {
+      fromUserId,
+      fromUsername,
+      fromAvatarUrl,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Handle friend request response
+  socket.on('friend_request_response', (data) => {
+    const { fromUserId, toUserId, accepted } = data;
+    
+    // Notify the original sender about the response
+    io.to(`user_${fromUserId}`).emit('friend_request_responded', {
+      fromUserId,
+      toUserId,
+      accepted,
+      timestamp: new Date().toISOString()
+    });
   });
 
   socket.on('disconnect', () => {

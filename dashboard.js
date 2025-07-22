@@ -824,26 +824,6 @@ document.querySelectorAll('.friend-item').forEach(friend => {
         const friendName = friend.querySelector('.friend-name').textContent;
         const isOnline = friend.querySelector('.status-indicator.online');
         updateHeaderInfo(friendName, isOnline ? 'Online' : null);
-
-        // Show only friends-content section
-        document.querySelectorAll('.section-content').forEach(content => {
-            content.style.display = 'none';
-        });
-        const friendsContent = document.querySelector('.friends-content');
-        if (friendsContent) {
-            friendsContent.style.display = 'flex';
-            friendsContent.innerHTML = `
-                <div class="connecting-message" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px 0;">
-                    <div style="font-size:54px;color:#8e44ec;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
-                        <i class="fas fa-plug"></i>
-                        <i class="fas fa-grip-lines"></i>
-                        <i class="fas fa-plug" style="transform:rotateY(180deg);"></i>
-                    </div>
-                    <h2 style="margin:0 0 12px 0;font-size:2rem;letter-spacing:1px;">PLEASE WAIT</h2>
-                    <p style="font-size:1.1rem;max-width:400px;text-align:center;">WE ARE CONNECTING YOU AND YOUR FRIEND. PLZ BE PATIENT.</p>
-                </div>
-            `;
-        }
     });
 });
 
@@ -2610,4 +2590,192 @@ window.socket.on('connect', () => {
 });
 window.socket.on('test-reply', (data) => {
   console.log('Test reply from server:', data);
+});
+
+// Initialize Socket.IO connection
+const socket = io('http://localhost:3000');
+
+// Connect socket with user ID
+document.addEventListener('DOMContentLoaded', () => {
+  const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+  if (currentUser) {
+    socket.emit('user_connected', currentUser.id);
+  }
+});
+
+// Notification System
+function showNotification(data, type = 'friend_request') {
+  const container = document.getElementById('notificationContainer');
+  if (!container) return;
+
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  
+  if (type === 'friend_request') {
+    notification.innerHTML = `
+      <div class="notification-avatar">
+        <img src="${data.fromAvatarUrl || 'assets/default-avatar.png'}" alt="${data.fromUsername}">
+      </div>
+      <div class="notification-content">
+        <div class="notification-header">
+          <div class="notification-title">${data.fromUsername}</div>
+          <button class="notification-close" onclick="closeNotification(this.parentElement.parentElement.parentElement)">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="notification-message">Sent you a friend request</div>
+        <div class="notification-actions">
+          <button class="notification-btn accept" onclick="handleFriendRequestResponse('${data.fromUserId}', true, this.parentElement.parentElement.parentElement)">
+            Accept
+          </button>
+          <button class="notification-btn reject" onclick="handleFriendRequestResponse('${data.fromUserId}', false, this.parentElement.parentElement.parentElement)">
+            Reject
+          </button>
+        </div>
+      </div>
+    `;
+  } else if (type === 'friend_response') {
+    const responseText = data.accepted ? 'accepted' : 'rejected';
+    notification.innerHTML = `
+      <div class="notification-avatar">
+        <img src="${data.fromAvatarUrl || 'assets/default-avatar.png'}" alt="${data.fromUsername}">
+      </div>
+      <div class="notification-content">
+        <div class="notification-header">
+          <div class="notification-title">${data.fromUsername}</div>
+          <button class="notification-close" onclick="closeNotification(this.parentElement.parentElement.parentElement)">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="notification-message">
+          ${data.fromUsername} ${responseText} your friend request
+        </div>
+      </div>
+    `;
+  }
+
+  container.appendChild(notification);
+
+  // Remove notification after 5 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.classList.add('removing');
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.parentElement.removeChild(notification);
+        }
+      }, 300);
+    }
+  }, 5000);
+}
+
+// Close notification
+window.closeNotification = function(notification) {
+  if (notification) {
+    notification.classList.add('removing');
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.parentElement.removeChild(notification);
+      }
+    }, 300);
+  }
+};
+
+// Handle friend request response
+window.handleFriendRequestResponse = async function(fromUserId, accepted, notification) {
+  const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+  if (!currentUser) return;
+
+  try {
+    if (accepted) {
+      // Add to friends table in Supabase
+      const { error: friendError } = await supabase
+        .from('friends')
+        .insert([
+          { user_id: currentUser.id, friend_id: fromUserId },
+          { user_id: fromUserId, friend_id: currentUser.id }
+        ]);
+
+      if (friendError) throw friendError;
+    }
+
+    // Delete the friend request from Supabase
+    const { error: deleteError } = await supabase
+      .from('friend_requests')
+      .delete()
+      .match({ from_user_id: fromUserId, to_user_id: currentUser.id });
+
+    if (deleteError) throw deleteError;
+
+    // Emit response via Socket.IO
+    socket.emit('friend_request_response', {
+      fromUserId: fromUserId,
+      toUserId: currentUser.id,
+      accepted: accepted
+    });
+
+    // Close the notification
+    closeNotification(notification);
+
+    // Refresh friends list if accepted
+    if (accepted && typeof loadFriendsList === 'function') {
+      loadFriendsList();
+    }
+
+  } catch (error) {
+    console.error('Error handling friend request:', error);
+    showNotification('Failed to process friend request', 'error');
+  }
+};
+
+// Update sendFriendRequest function to use Socket.IO
+async function sendFriendRequest(userId) {
+  const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+  if (!currentUser || userId === currentUser.id) return;
+
+  try {
+    // First check if request already exists
+    const { data: existingRequest } = await supabase
+      .from('friend_requests')
+      .select('*')
+      .match({ from_user_id: currentUser.id, to_user_id: userId })
+      .single();
+
+    if (existingRequest) {
+      showNotification('Friend request already sent', 'info');
+      return;
+    }
+
+    // Insert friend request into Supabase
+    const { error } = await supabase
+      .from('friend_requests')
+      .insert([{
+        from_user_id: currentUser.id,
+        to_user_id: userId
+      }]);
+
+    if (error) throw error;
+
+    // Emit socket event
+    socket.emit('send_friend_request', {
+      fromUserId: currentUser.id,
+      toUserId: userId,
+      fromUsername: currentUser.username,
+      fromAvatarUrl: currentUser.avatar_url
+    });
+
+    showNotification('Friend request sent successfully!', 'success');
+  } catch (error) {
+    console.error('Error sending friend request:', error);
+    showNotification('Failed to send friend request', 'error');
+  }
+}
+
+// Listen for friend request events
+socket.on('friend_request_received', (data) => {
+  showNotification(data, 'friend_request');
+});
+
+socket.on('friend_request_responded', (data) => {
+  showNotification(data, 'friend_response');
 });
