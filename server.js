@@ -17,12 +17,17 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from 'WOVO' directory
-app.use(express.static(path.join(__dirname, 'WOVO')));
+// Serve static files from current directory (WOVO)
+app.use(express.static(__dirname));
 
 // Serve index.html as the main page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'WOVO', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// 404 fallback
+app.use((req, res) => {
+  res.status(404).send('404: Page not found');
 });
 
 // Socket.IO connection
