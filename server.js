@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,9 +17,12 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Basic test route
+// Serve static files from 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve dashboard.html as the main page
 app.get('/', (req, res) => {
-  res.send('WOVO Socket.IO server running!');
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 // Socket.IO connection
