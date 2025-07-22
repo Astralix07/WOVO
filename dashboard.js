@@ -825,9 +825,13 @@ document.querySelectorAll('.friend-item').forEach(friend => {
         const isOnline = friend.querySelector('.status-indicator.online');
         updateHeaderInfo(friendName, isOnline ? 'Online' : null);
 
-        // Show connecting message in friends-content
+        // Show only friends-content section
+        document.querySelectorAll('.section-content').forEach(content => {
+            content.style.display = 'none';
+        });
         const friendsContent = document.querySelector('.friends-content');
         if (friendsContent) {
+            friendsContent.style.display = 'flex';
             friendsContent.innerHTML = `
                 <div class="connecting-message" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px 0;">
                     <div style="font-size:54px;color:#8e44ec;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
