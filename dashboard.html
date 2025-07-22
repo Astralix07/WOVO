@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WOVO Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="components/group-settings.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Collapsible Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <!-- Top Section -->
+            <div class="sidebar-top">
+                <button class="hamburger-btn" id="hamburger-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <div class="nav-item active">
+                    <i class="fas fa-users"></i>
+                    <span class="nav-label">Groups</span>
+                </div>
+                
+                <div class="nav-item">
+                    <i class="fas fa-user-friends"></i>
+                    <span class="nav-label">Friends</span>
+                </div>
+                
+                <div class="nav-item">
+                    <i class="fas fa-trophy"></i>
+                    <span class="nav-label">Tournaments</span>
+                </div>
+                
+                <div class="nav-item">
+                    <i class="fas fa-gamepad"></i>
+                    <span class="nav-label">Custom Rooms</span>
+                </div>
+            </div>
+
+            <!-- Bottom Section -->
+            <div class="sidebar-bottom">
+                <div class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span class="nav-label">Settings</span>
+                </div>
+                
+                <div class="nav-item" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="nav-label">Logout</span>
+                </div>
+                
+                <div class="nav-item theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="nav-label">Dark Mode</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Details Sidebar -->
+        <nav class="details-sidebar">
+            <!-- Groups Section -->
+            <div class="details-section active" id="groups-section">
+                <header class="details-header">
+                    <h3>My Groups</h3>
+                    <button class="refresh-groups-btn" title="Refresh Groups" aria-label="Refresh Groups">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="add-new-btn">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </header>
+                
+                <div class="details-content">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search groups...">
+                    </div>
+
+                    <div class="section-header">
+                        <div class="header-title">
+                            <h4>DEFAULT GROUPS</h4>
+                            <div class="header-underline"></div>
+                        </div>
+                        <button class="toggle-section" id="toggleDefaultGroups">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+
+                    <div class="groups-list" id="defaultGroups">
+                        <div class="group-item active" data-group-id="default-all-india">
+                            <div class="group-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="group-info">
+                                <div class="group-name">ALL INDIA</div>
+                                <div class="group-meta">250 members • 45 online</div>
+                            </div>
+                        </div>
+
+                        <div class="group-item" data-group-id="default-4v4-customs">
+                            <div class="group-icon">
+                                <i class="fas fa-gamepad"></i>
+                            </div>
+                            <div class="group-info">
+                                <div class="group-name">4V4 CUSTOMS</div>
+                                <div class="group-meta">32 members • 8 online</div>
+                            </div>
+                        </div>
+
+                        <div class="group-item" data-group-id="default-4pc-players">
+                            <div class="group-icon">
+                                <i class="fas fa-desktop"></i>
+                            </div>
+                            <div class="group-info">
+                                <div class="group-name">4 PC PLAYERS(4V4)</div>
+                                <div class="group-meta">16 members • 4 online</div>
+                            </div>
+                        </div>
+
+                        <div class="group-item" data-group-id="default-mobile-customs">
+                            <div class="group-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div class="group-info">
+                                <div class="group-name">MOBILE CUSTOMS</div>
+                                <div class="group-meta">100 members • 25 online</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-header">
+                        <div class="header-title">
+                            <h4>PUBLIC GROUPS</h4>
+                            <div class="header-underline"></div>
+                        </div>
+                        <button class="toggle-section" id="togglePublicGroups">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+
+                    <div class="groups-list" id="publicGroups">
+                        <!-- Public groups will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friends Section -->
+            <div class="details-section" id="friends-section">
+                <header class="details-header">
+                    <h3>Friends</h3>
+                    <button class="add-new-btn">
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                </header>
+                
+                <div class="details-content">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search friends...">
+                    </div>
+
+                    <div class="friends-list" id="realFriendsList">
+                        <!-- Real friends will be rendered here by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tournaments Section -->
+            <div class="details-section" id="tournaments-section">
+                <header class="details-header">
+                    <h3>Tournaments</h3>
+                    <button class="add-new-btn">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </header>
+                
+                <div class="details-content">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search tournaments...">
+                    </div>
+
+                    <div class="tournaments-list">
+                        <div class="tournament-item active">
+                            <div class="tournament-header">
+                                <div class="tournament-name">BGMI Pro League</div>
+                                <div class="tournament-prize">₹10,000</div>
+                            </div>
+                            <div class="tournament-meta">
+                                <span><i class="fas fa-users"></i> 32 Teams</span>
+                                <span><i class="fas fa-calendar"></i> Starts in 2d</span>
+                            </div>
+                        </div>
+
+                        <div class="tournament-item">
+                            <div class="tournament-header">
+                                <div class="tournament-name">Valorant Cup</div>
+                                <div class="tournament-prize">₹5,000</div>
+                            </div>
+                            <div class="tournament-meta">
+                                <span><i class="fas fa-users"></i> 16 Teams</span>
+                                <span><i class="fas fa-calendar"></i> Tomorrow</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Rooms Section -->
+            <div class="details-section" id="rooms-section">
+                <header class="details-header">
+                    <h3>Custom Rooms</h3>
+                    <button class="add-new-btn">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </header>
+                
+                <div class="details-content">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search rooms...">
+                    </div>
+
+                    <div class="rooms-list">
+                        <div class="room-item active">
+                            <div class="room-info">
+                                <div class="room-name">BGMI Scrims</div>
+                                <div class="room-meta">
+                                    <span><i class="fas fa-users"></i> 45/100</span>
+                                    <span><i class="fas fa-clock"></i> Starting in 10m</span>
+                                </div>
+                            </div>
+                            <button class="join-room-btn">Join</button>
+                        </div>
+
+                        <div class="room-item">
+                            <div class="room-info">
+                                <div class="room-name">Practice Match</div>
+                                <div class="room-meta">
+                                    <span><i class="fas fa-users"></i> 12/20</span>
+                                    <span><i class="fas fa-clock"></i> In Progress</span>
+                                </div>
+                            </div>
+                            <button class="join-room-btn">Spectate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Profile Area -->
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <img src="assets/default-avatar.png" alt="User Avatar">
+                    <div class="status-indicator online"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="sidebarUsername">Username</div>
+                    <div class="user-status">Online</div>
+                </div>
+                <div class="user-settings">
+                    <button class="user-settings-btn">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Default Content -->
+            <div class="main-content-section active" id="default-content">
+                <header class="content-header">
+                    <div class="header-left">
+                        <span class="channel-hashtag">#</span>
+                        <h3 id="content-title">ALL INDIA</h3>
+                        <div class="active-indicator">
+                            <span class="active-count">45 online</span>
+                            <div class="active-dot"></div>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn join-btn" id="joinBtn" style="display: none;">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Join</span>
+                        </button>
+                        <button class="action-btn" id="inviteBtn">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Invite</span>
+                        </button>
+                        <button class="action-btn" id="shareBtn">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Share</span>
+                        </button>
+                        <button class="action-btn" id="groupSettingsBtn" style="display: none;">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </button>
+                    </div>
+                </header>
+                
+                <div class="content-container">
+                    <!-- Groups Content -->
+                    <div class="section-content groups-content">
+                        <!-- Group content will be dynamically added here -->
+                    </div>
+
+                    <!-- Friends Content -->
+                    <div class="section-content friends-content" style="display: none;">
+                        <div class="coming-soon">
+                            <i class="fas fa-users"></i>
+                            <h2>Coming Soon!</h2>
+                            <p>Connect and play with your gaming buddies.</p>
+                            <div class="features-preview">
+                                <div class="feature">
+                                    <i class="fas fa-comment-dots"></i>
+                                    <span>Direct Messages</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-gamepad"></i>
+                                    <span>Game Together</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>Friend Requests</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tournaments Content -->
+                    <div class="section-content tournaments-content" style="display: none;">
+                        <div class="coming-soon">
+                            <i class="fas fa-trophy"></i>
+                            <h2>Coming Soon!</h2>
+                            <p>Epic tournaments and competitions are on the way!</p>
+                            <div class="features-preview">
+                                <div class="feature">
+                                    <i class="fas fa-bracket"></i>
+                                    <span>Brackets</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-medal"></i>
+                                    <span>Leaderboards</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-gift"></i>
+                                    <span>Prizes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Rooms Content -->
+                    <div class="section-content rooms-content" style="display: none;">
+                        <div class="coming-soon">
+                            <i class="fas fa-door-open"></i>
+                            <h2>Coming Soon!</h2>
+                            <p>Create and join custom game rooms with your preferred rules.</p>
+                            <div class="features-preview">
+                                <div class="feature">
+                                    <i class="fas fa-cog"></i>
+                                    <span>Custom Rules</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-users-cog"></i>
+                                    <span>Team Setup</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Match Scheduling</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="main-content-section settings-page" id="settings-page">
+                <header class="settings-header">
+                    <h2>User Settings</h2>
+                    <button class="close-settings">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </header>
+
+                <div class="settings-container">
+                    <!-- Settings Sidebar -->
+                    <div class="settings-sidebar">
+                        <div class="settings-category active" data-section="my-account">
+                            <i class="fas fa-user"></i>
+                            My Account
+                        </div>
+                        <div class="settings-category" data-section="profile">
+                            <i class="fas fa-id-card"></i>
+                            Profile
+                        </div>
+                        <div class="settings-category" data-section="privacy">
+                            <i class="fas fa-shield-alt"></i>
+                            Privacy & Safety
+                        </div>
+                        <div class="settings-category" data-section="notifications">
+                            <i class="fas fa-bell"></i>
+                            Notifications
+                        </div>
+                        <div class="settings-category" data-section="appearance">
+                            <i class="fas fa-paint-brush"></i>
+                            Appearance
+                        </div>
+                        <div class="settings-category danger" data-section="delete-account">
+                            <i class="fas fa-trash-alt"></i>
+                            Delete Account
+                        </div>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div class="settings-content">
+                        <!-- My Account Section -->
+                        <div class="settings-section active" id="my-account-section">
+                            <h3>My Account</h3>
+                            <div class="account-info">
+                                <div class="profile-banner">
+                                    <input type="file" id="banner-upload" accept="image/*" style="display: none;">
+                                    <button class="change-banner" onclick="document.getElementById('banner-upload').click()">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                                <div class="profile-info">
+                                    <div class="profile-avatar">
+                                        <img src="./assets/default-avatar.png" 
+                                             alt="User Avatar" 
+                                             id="user-avatar"
+                                             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                                        <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+                                        <button class="change-avatar" onclick="document.getElementById('avatar-upload').click()">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
+                                    </div>
+                                    <div class="profile-details">
+                                        <div class="detail-group">
+                                            <label>USER ID</label>
+                                            <div class="detail-value" id="userid-container">
+                                                <span id="settings-userid">Loading...</span>
+                                                <div class="copy-options">
+                                                    <button class="copy-btn" onclick="copyUserId()">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="detail-group">
+                                            <label>USERNAME</label>
+                                            <div class="detail-value" id="username-container">
+                                                <span id="settings-username">Username</span>
+                                                <div class="edit-options">
+                                                    <button class="edit-btn" onclick="toggleUsernameEdit()">
+                                                        <i class="fas fa-pencil-alt"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="username-edit-container" style="display: none;">
+                                                <input type="text" id="username-edit-input" class="username-edit-input" placeholder="Enter new username">
+                                                <div class="username-edit-buttons">
+                                                    <button class="save-btn" onclick="saveNewUsername()">Save</button>
+                                                    <button class="cancel-btn" onclick="cancelUsernameEdit()">Cancel</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="detail-group">
+                                            <label>EMAIL</label>
+                                            <div class="detail-value">Not set</div>
+                                            <button class="edit-btn">Add</button>
+                                        </div>
+                                        <div class="detail-group">
+                                            <label>PHONE NUMBER</label>
+                                            <div class="detail-value">Not set</div>
+                                            <button class="edit-btn">Add</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Other sections will be shown/hidden based on selection -->
+                        <div class="settings-section" id="profile-section">
+                            <h3>Gaming Profile</h3>
+                            <div class="profile-content">
+                                <!-- Game Selection -->
+                                <div class="game-selection">
+                                    <h4>PICK YOUR POISON 🎮</h4>
+                                    <p class="fun-text">Choose your main battlefield, warrior! What's your go-to game for crushing noobs?</p>
+                                    
+                                    <div class="game-grid">
+                                        <div class="game-card" data-game="freefire">
+                                            <img src="assets/garena.png" alt="Free Fire">
+                                            <div class="game-info">
+                                                <h5>Free Fire</h5>
+                                                <p>Quick & Intense Action!</p>
+                                            </div>
+                                            <div class="selected-badge">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="game-card" data-game="bgmi">
+                                            <img src="assets/bgmi.png" alt="BGMI">
+                                            <div class="game-info">
+                                                <h5>BGMI</h5>
+                                                <p>India's Battleground!</p>
+                                            </div>
+                                            <div class="selected-badge">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="game-card" data-game="valorant">
+                                            <img src="assets/valorant.png" alt="Valorant">
+                                            <div class="game-info">
+                                                <h5>Valorant</h5>
+                                                <p>Tactical Shooter Mastery!</p>
+                                            </div>
+                                            <div class="selected-badge">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="game-card" data-game="pubg">
+                                            <img src="assets/pubg.png" alt="PUBG">
+                                            <div class="game-info">
+                                                <h5>PUBG</h5>
+                                                <p>Battle Royale Mayhem!</p>
+                                            </div>
+                                            <div class="selected-badge">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="game-card" data-game="cod">
+                                            <img src="assets/activision.png" alt="Call of Duty">
+                                            <div class="game-info">
+                                                <h5>Call of Duty</h5>
+                                                <p>Lock & Load!</p>
+                                            </div>
+                                            <div class="selected-badge">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Game Profile -->
+                                <div class="game-profile">
+                                    <h4>SHOW OFF YOUR STATS 🏆</h4>
+                                    <p class="fun-text">Let's see what you've got! Drop your game ID and flex those achievements!</p>
+
+                                    <div class="game-profile-form">
+                                        <div class="form-group">
+                                            <label>GAME ID <span class="fun-label">(your secret code 🕵️‍♂️)</span></label>
+                                            <input type="text" id="gameId" placeholder="Enter your in-game ID">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>NICKNAME <span class="fun-label">(what they fear 😈)</span></label>
+                                            <input type="text" id="gameNickname" placeholder="Your in-game nickname">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>GAME RANK <span class="fun-label">(flex time 💪)</span></label>
+                                            <input type="text" id="gameRank" placeholder="Your current rank">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>GAME PROFILE PICTURE <span class="fun-label">(show your war face 🎭)</span></label>
+                                            <div class="game-profile-upload">
+                                                <div class="upload-placeholder" id="gameProfilePic">
+                                                    <i class="fas fa-cloud-upload-alt"></i>
+                                                    <span>Click to upload</span>
+                                                </div>
+                                                <input type="file" id="gameProfileUpload" accept="image/*" style="display: none;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Gaming Style -->
+                                <div class="gaming-style">
+                                    <h4>YOUR GAMING PERSONALITY 🎭</h4>
+                                    <p class="fun-text">What kind of player are you? Pick your style!</p>
+
+                                    <div class="style-cards">
+                                        <div class="style-card" data-style="aggressive">
+                                            <i class="fas fa-fire"></i>
+                                            <h5>Aggressive</h5>
+                                            <p>Rush & Crush!</p>
+                                        </div>
+
+                                        <div class="style-card" data-style="tactical">
+                                            <i class="fas fa-chess"></i>
+                                            <h5>Tactical</h5>
+                                            <p>Big Brain Plays!</p>
+                                        </div>
+
+                                        <div class="style-card" data-style="support">
+                                            <i class="fas fa-hands-helping"></i>
+                                            <h5>Support</h5>
+                                            <p>Team Player!</p>
+                                        </div>
+
+                                        <div class="style-card" data-style="sniper">
+                                            <i class="fas fa-crosshairs"></i>
+                                            <h5>Sniper</h5>
+                                            <p>One Shot, One Kill!</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Save Button -->
+                                <div class="save-profile">
+                                    <button class="save-profile-btn">
+                                        <i class="fas fa-save"></i>
+                                        Save My Epic Profile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Privacy & Safety Section -->
+                        <div class="settings-section" id="privacy-section">
+                            <h3>Privacy</h3>
+                            <div class="settings-content">
+                                <div class="privacy-options">
+                                    <div class="privacy-option">
+                                        <div class="option-details">
+                                            <div class="option-title">Who can see my profile</div>
+                                            <select class="privacy-select">
+                                                <option value="everyone">Everyone</option>
+                                                <option value="friends">Friends Only</option>
+                                                <option value="none">No One</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications Section -->
+                        <div class="settings-section" id="notifications-section">
+                            <h3>Notifications</h3>
+                            <div class="settings-content">
+                                <div id="friendRequestsList"></div>
+                                <div class="notification-options">
+                                    <div class="notification-option">
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <div class="option-details">
+                                            <div class="option-title">Match Notifications</div>
+                                            <div class="option-description">Get notified when matches start</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appearance Section -->
+                        <div class="settings-section" id="appearance-section">
+                            <h3>Appearance</h3>
+                            <div class="appearance-options">
+                                <h4>THEME</h4>
+                                <div class="theme-options">
+                                    <div class="theme-option" data-theme="dark">
+                                        <div class="theme-preview dark"></div>
+                                        <div class="theme-label">Dark</div>
+                                    </div>
+                                    <div class="theme-option" data-theme="light">
+                                        <div class="theme-preview light"></div>
+                                        <div class="theme-label">Light</div>
+                                    </div>
+                                </div>
+
+                                <h4>CHAT FONT SIZE</h4>
+                                <div class="font-size-slider">
+                                    <input type="range" min="12" max="20" value="14" class="slider" id="fontSizeSlider">
+                                    <div class="font-size-labels">
+                                        <span>12px</span>
+                                        <span>16px</span>
+                                        <span>20px</span>
+                                    </div>
+                                </div>
+
+                                <h4>ANIMATIONS</h4>
+                                <div class="animation-option">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <div class="option-details">
+                                        <div class="option-title">Enable Animations</div>
+                                        <div class="option-description">Show animations throughout the app</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delete Account Section -->
+                        <div class="settings-section danger-zone" id="delete-account-section">
+                            <h3>Delete Account</h3>
+                            <div class="danger-box">
+                                <h4>ACCOUNT DELETION</h4>
+                                <p>This will permanently delete your WOVO account and remove all your data. This action cannot be undone.</p>
+                                <div class="delete-confirmation">
+                                    <p class="confirmation-text">Type "DELETE MY ACCOUNT" to confirm:</p>
+                                    <input type="text" id="deleteConfirmText" placeholder="DELETE MY ACCOUNT" class="delete-confirm-input">
+                                    <label>
+                                        <input type="checkbox" id="deleteConfirm">
+                                        I understand that this action is permanent
+                                    </label>
+                                </div>
+                                <button class="delete-account-btn" disabled>Delete Account</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Members Sidebar (Right) -->
+        <aside class="members-sidebar">
+            <div class="members-header">
+                <h3>MEMBERS</h3>
+            </div>
+            
+            <!-- Member Categories -->
+            <div class="member-category">
+                <h4>ONLINE — 3</h4>
+                <div class="member-list">
+                    <div class="member-item">
+                        <div class="member-avatar">
+                            <div class="status-indicator online"></div>
+                        </div>
+                        <span class="member-name">User 1</span>
+                    </div>
+                    <div class="member-item">
+                        <div class="member-avatar">
+                            <div class="status-indicator online"></div>
+                        </div>
+                        <span class="member-name">User 2</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="member-category">
+                <h4>OFFLINE — 1</h4>
+                <div class="member-list">
+                    <div class="member-item">
+                        <div class="member-avatar">
+                            <div class="status-indicator offline"></div>
+                        </div>
+                        <span class="member-name">User 3</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container"></div>
+
+    <!-- User Profile Modal (for member quick view) -->
+    <div class="user-profile-modal" id="userProfileModal" style="display: none;">
+      <div class="user-profile-modal-content">
+        <div class="user-profile-loading-overlay" id="userProfileLoadingOverlay">
+          <div class="user-profile-loading-spinner"></div>
+        </div>
+        <div class="user-profile-banner" id="userProfileBanner"></div>
+        <div class="user-profile-avatar-wrapper">
+          <img id="userProfileAvatar" src="assets/default-avatar.png" alt="User Avatar">
+        </div>
+        <div class="user-profile-info">
+          <div class="user-profile-name" id="userProfileName">Username</div>
+          <div class="user-profile-id">ID: <span id="userProfileId">-</span></div>
+        </div>
+        <button class="add-friend-btn" id="addFriendBtn" title="Add Friend"><i class="fas fa-user-plus"></i></button>
+        <button class="close-user-profile-modal" id="closeUserProfileModal"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+
+    <!-- Image Cropping Modal -->
+    <div class="crop-modal" style="display: none;">
+        <div class="crop-container">
+            <div class="crop-header">
+                <h3>Crop Image</h3>
+                <button class="close-crop" onclick="closeCropModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="crop-content">
+                <div class="crop-area">
+                    <img id="crop-image" src="">
+                </div>
+                <div class="crop-controls">
+                    <button class="crop-btn" onclick="saveCroppedImage()">Save</button>
+                    <button class="cancel-btn" onclick="closeCropModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div class="create-group-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Group</h3>
+                <button class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>GROUP NAME</label>
+                    <input type="text" id="groupName" placeholder="Enter a cool name for your group" maxlength="50">
+                    <div class="input-info">
+                        <span class="char-count">0/50</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>PRIVACY SETTING</label>
+                    <div class="privacy-options">
+                        <div class="privacy-option" data-privacy="public">
+                            <div class="option-icon">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                            <div class="option-info">
+                                <h4>Public Group</h4>
+                                <p>Anyone can find and join this group</p>
+                            </div>
+                        </div>
+                        <div class="privacy-option" data-privacy="private">
+                            <div class="option-icon">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <div class="option-info">
+                                <h4>Private Group</h4>
+                                <p>Only invited members can join</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>SELECT GAME</label>
+                    <div class="game-options">
+                        <div class="game-option" data-game="freefire">
+                            <img src="assets/garena.png" alt="Free Fire">
+                            <span>Free Fire</span>
+                        </div>
+                        <div class="game-option" data-game="bgmi">
+                            <img src="assets/bgmi.png" alt="BGMI">
+                            <span>BGMI</span>
+                        </div>
+                        <div class="game-option" data-game="valorant">
+                            <img src="assets/valorant.png" alt="Valorant">
+                            <span>Valorant</span>
+                        </div>
+                        <div class="game-option" data-game="pubg">
+                            <img src="assets/pubg.png" alt="PUBG">
+                            <span>PUBG</span>
+                        </div>
+                        <div class="game-option" data-game="cod">
+                            <img src="assets/activision.png" alt="Call of Duty">
+                            <span>Call of Duty</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn">Cancel</button>
+                <button class="create-btn" disabled>Create Group</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final Delete Confirmation Modal -->
+    <div class="final-delete-modal" style="display: none;">
+        <div class="final-delete-container">
+            <h3>⚠️ Final Warning</h3>
+            <p>Are you absolutely sure you want to delete your account? This action cannot be undone.</p>
+            <p>All your data will be permanently deleted, including:</p>
+            <ul>
+                <li>Your profile information</li>
+                <li>All uploaded media files</li>
+                <li>Game profiles and settings</li>
+                <li>Group memberships and friends</li>
+            </ul>
+            <div class="final-delete-buttons">
+                <button class="cancel-delete-btn">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button class="confirm-delete-btn">
+                    <i class="fas fa-trash-alt"></i>
+                    Yes, Delete My Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deletion Progress Modal -->
+    <div class="deletion-progress-modal" style="display: none;">
+        <div class="deletion-progress-container">
+            <h3>Deleting Account</h3>
+            <div class="progress-steps">
+                <div class="progress-step" id="fetchStep">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Fetching account data...</span>
+                </div>
+                <div class="progress-step" id="mediaStep">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Deleting media files...</span>
+                    <div class="media-count" id="mediaProgress"></div>
+                </div>
+                <div class="progress-step" id="accountStep">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Deleting account...</span>
+                </div>
+                <div class="progress-step" id="finalStep">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Finalizing...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Settings Modal -->
+    <div class="group-settings-modal" id="groupSettingsModal" style="display: none;">
+      <div class="group-settings-container">
+        <header class="group-settings-header">
+          <h2>Group Settings</h2>
+          <button class="close-group-settings">
+            <i class="fas fa-times"></i>
+          </button>
+        </header>
+        <div class="group-settings-body">
+          <!-- Sidebar -->
+          <nav class="group-settings-sidebar">
+            <div class="group-settings-category active" data-section="overview">
+              <i class="fas fa-home"></i>
+              Overview
+            </div>
+            <div class="group-settings-category" data-section="members">
+              <i class="fas fa-users"></i>
+              Members
+            </div>
+            <div class="group-settings-category" data-section="roles">
+              <i class="fas fa-user-shield"></i>
+              Roles
+            </div>
+            <div class="group-settings-category" data-section="privacy">
+              <i class="fas fa-shield-alt"></i>
+              Privacy
+            </div>
+            <div class="group-settings-category danger" data-section="delete-group">
+              <i class="fas fa-trash-alt"></i>
+              Delete Group
+            </div>
+          </nav>
+          <!-- Content -->
+          <div class="group-settings-content">
+            <!-- Overview Section -->
+            <div class="group-settings-section active" id="group-overview-section">
+              <h3>Group Overview</h3>
+              
+              <!-- Group Identity Preview -->
+              <div class="group-preview">
+                <div class="group-banner">
+                  <div class="banner-placeholder">
+                    <i class="fas fa-image"></i>
+                    <span>UPLOAD BANNER</span>
+                  </div>
+                  <img src="" alt="Group Banner" id="groupBannerPreview" style="display: none;">
+                  <button class="change-banner" onclick="document.getElementById('groupBannerUpload').click()">
+                    <i class="fas fa-camera"></i>
+                    <span>CHANGE GROUP BANNER</span>
+                  </button>
+                  <input type="file" id="groupBannerUpload" accept="image/*" style="display: none;">
+                </div>
+                
+                <div class="group-identity">
+                  <div class="group-avatar-wrapper">
+                    <div class="group-avatar">
+                      <img src="assets/default-avatar.png" alt="Group Avatar" id="groupAvatarPreview">
+                      <button class="change-avatar" onclick="document.getElementById('groupAvatarUpload').click()">
+                        <i class="fas fa-camera"></i>
+                      </button>
+                      <input type="file" id="groupAvatarUpload" accept="image/*" style="display: none;">
+                    </div>
+                  </div>
+                  
+                  <div class="group-info-preview">
+                    <div class="group-name-wrapper">
+                      <h4 id="groupNamePreview">Group Name</h4>
+                      <button class="edit-name-btn" onclick="toggleGroupNameEdit()">
+                        <i class="fas fa-pencil-alt"></i>
+                      </button>
+                    </div>
+                    <div class="group-id">
+                      Group ID: <span id="groupIdDisplay">Loading...</span>
+                      <button class="copy-id-btn" onclick="copyGroupId()">
+                        <i class="fas fa-copy"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Group Name Edit -->
+              <div class="form-group">
+                <label>GROUP NAME</label>
+                <div class="input-wrapper">
+                  <input type="text" id="groupSettingsName" maxlength="50" placeholder="Enter group name">
+                  <div class="input-counter">0/50</div>
+                </div>
+              </div>
+
+              <!-- Game Selection -->
+              <div class="form-group">
+                <label>GAME</label>
+                <p class="form-subtitle">Choose the game for your group</p>
+                <div class="game-grid">
+                  <div class="game-card" data-game="freefire">
+                    <img src="assets/garena.png" alt="Free Fire">
+                    <div class="game-info">
+                      <h5>Free Fire</h5>
+                      <p>Quick & Intense Action!</p>
+                    </div>
+                    <div class="selected-badge">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+
+                  <div class="game-card" data-game="bgmi">
+                    <img src="assets/bgmi.png" alt="BGMI">
+                    <div class="game-info">
+                      <h5>BGMI</h5>
+                      <p>India's Battleground!</p>
+                    </div>
+                    <div class="selected-badge">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+
+                  <div class="game-card" data-game="valorant">
+                    <img src="assets/valorant.png" alt="Valorant">
+                    <div class="game-info">
+                      <h5>Valorant</h5>
+                      <p>Tactical Shooter Mastery!</p>
+                    </div>
+                    <div class="selected-badge">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+
+                  <div class="game-card" data-game="pubg">
+                    <img src="assets/pubg.png" alt="PUBG">
+                    <div class="game-info">
+                      <h5>PUBG</h5>
+                      <p>Battle Royale Mayhem!</p>
+                    </div>
+                    <div class="selected-badge">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+
+                  <div class="game-card" data-game="cod">
+                    <img src="assets/activision.png" alt="Call of Duty">
+                    <div class="game-info">
+                      <h5>Call of Duty</h5>
+                      <p>Lock & Load!</p>
+                    </div>
+                    <div class="selected-badge">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="save-group-settings-btn">
+                <i class="fas fa-save"></i>
+                Save Changes
+              </button>
+            </div>
+            <!-- Members Section -->
+            <div class="group-settings-section" id="group-members-section">
+              <h3>Members</h3>
+              <div class="members-header">
+                <div class="search-bar">
+                  <i class="fas fa-search"></i>
+                  <input type="text" placeholder="Search members" id="memberSearchInput">
+                </div>
+                <div class="members-count">
+                  <span id="memberCount">0</span> Members
+                </div>
+              </div>
+
+              <div class="members-table-container">
+                <table class="members-table">
+                  <thead>
+                    <tr>
+                      <th>USER</th>
+                      <th>ID</th>
+                      <th>ROLE</th>
+                      <th>JOINED</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="membersTableBody">
+                    <!-- Members will be dynamically loaded here -->
+                    <tr class="member-loading">
+                      <td colspan="5">
+                        <div class="loading-spinner">
+                          <i class="fas fa-spinner fa-spin"></i>
+                          Loading members...
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Member Role Actions Menu (Hidden by default) -->
+              <div class="member-actions-menu" id="memberActionsMenu" style="display: none;">
+                <div class="menu-item change-role" data-action="promote">
+                  <i class="fas fa-arrow-up"></i>
+                  Promote to Admin
+                </div>
+                <div class="menu-item change-role" data-action="demote">
+                  <i class="fas fa-arrow-down"></i>
+                  Remove Admin
+                </div>
+                <div class="menu-item remove-member" data-action="kick">
+                  <i class="fas fa-user-minus"></i>
+                  Remove from Group
+                </div>
+              </div>
+            </div>
+            <!-- Roles Section -->
+            <div class="group-settings-section" id="group-roles-section">
+              <h3>Roles</h3>
+              <button class="create-role-btn">
+                <i class="fas fa-plus"></i>
+                Create Role
+              </button>
+              <div class="roles-list">
+                <!-- Roles will be dynamically loaded here -->
+                <div class="role-item">
+                  <div class="role-color" style="background: #5865f2;"></div>
+                  <div class="role-name">Admin</div>
+                </div>
+                <div class="role-item">
+                  <div class="role-color" style="background: #3ba55c;"></div>
+                  <div class="role-name">Moderator</div>
+                </div>
+              </div>
+            </div>
+            <!-- Privacy Section -->
+            <div class="group-settings-section" id="group-privacy-section">
+              <h3>Privacy Settings</h3>
+              <div class="privacy-options">
+                <div class="privacy-option">
+                  <label>GROUP PRIVACY</label>
+                  <select id="groupSettingsPrivacy">
+                    <option value="public">Public - Anyone can find and join</option>
+                    <option value="private">Private - Must be invited</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- Delete Group Section -->
+            <div class="group-settings-section danger-zone" id="group-delete-section">
+              <h3>Delete Group</h3>
+              <div class="danger-box">
+                <h4>DELETE GROUP</h4>
+                <p>Are you sure you want to delete this group? This action cannot be undone and all data will be permanently lost.</p>
+                <div class="delete-confirmation">
+                  <p class="confirmation-text">Type "DELETE GROUP" to confirm:</p>
+                  <input type="text" id="deleteGroupConfirmText" placeholder="DELETE GROUP" class="delete-confirm-input">
+                </div>
+                <button class="delete-group-btn" disabled>Delete Group</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="components/group-settings.js"></script>
+</body>
+</html> 

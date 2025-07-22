@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOVO - Organize Your Mobile Matches</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="logo special-brand">WOVO</div>
+    <nav class="nav">
+      <a href="#" class="nav-link">HOME</a>
+      <a href="#" class="nav-link">LOGIN</a>
+      <a href="#" class="nav-link">MORE</a>
+      <a href="#" class="nav-link">ABOUT US</a>
+    </nav>
+  </header>
+  <main class="main-content no-scroll">
+    <h1 class="main-heading animated-heading">
+      <span class="heading-letter" data-dir="left">W</span>
+      <span class="heading-letter" data-dir="top">O</span>
+      <span class="heading-letter" data-dir="right">V</span>
+      <span class="heading-letter" data-dir="bottom">O</span>
+      <span class="heading-rest">: Organize Your Matches</span>
+    </h1>
+    <p class="tagline">A new era for gamers: set up, organize, and play matches and tournaments with friends—effortlessly, securely, and all in one place.</p>
+    <button class="get-started">Get Started</button>
+    <section class="supported-games">
+      <h2>Supported Games</h2>
+      <div class="games-list">
+        <div class="game-logo" id="freefire">
+          <img src="assets/garena.png" alt="Garena Logo" class="game-img" />
+        </div>
+        <div class="game-logo" id="bgmi">
+          <img src="assets/bgmi.png" alt="BGMI Logo" class="game-img" />
+        </div>
+        <div class="game-logo" id="pubg">
+          <img src="assets/pubg.png" alt="PUBG Logo" class="game-img" />
+        </div>
+        <div class="game-logo" id="valorant">
+          <img src="assets/valorant.png" alt="Valorant Logo" class="game-img" />
+        </div>
+        <div class="game-logo" id="cod">
+          <img src="assets/activision.png" alt="Activision Logo" class="game-img" />
+        </div>
+      </div>
+    </section>
+    <div id="feature-points"><span id="feature-point-text"></span></div>
+  </main>
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-container">
+      <h1 class="modal-title">Welcome!</h1>
+      <div class="modal-tabs">
+        <div class="modal-tab active" data-tab="signup">Sign Up</div>
+        <div class="modal-tab" data-tab="login">Login</div>
+      </div>
+      <div class="modal-form-container">
+        <div class="modal-form-content signup active">
+          <form id="signupForm">
+            <div class="modal-form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" placeholder="Enter your username">
+            </div>
+            <div class="modal-form-group">
+              <label for="password">Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="password" placeholder="Enter your password">
+                <button type="button" class="toggle-password" data-target="password">👁️</button>
+              </div>
+            </div>
+            <div class="modal-form-group">
+              <label for="confirm-password">Confirm Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="confirm-password" placeholder="Confirm your password">
+                <button type="button" class="toggle-password" data-target="confirm-password">👁️</button>
+              </div>
+            </div>
+            <button type="submit" class="modal-action-btn">Sign Up</button>
+          </form>
+        </div>
+        <div class="modal-form-content login">
+          <form id="loginForm">
+            <div class="modal-form-group">
+              <label for="login-username">Username</label>
+              <input type="text" id="login-username" placeholder="Enter your username">
+            </div>
+            <div class="modal-form-group">
+              <label for="login-password">Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="login-password" placeholder="Enter your password">
+                <button type="button" class="toggle-password" data-target="login-password">👁️</button>
+              </div>
+            </div>
+            <button type="submit" class="modal-action-btn">Login</button>
+          </form>
+        </div>
+      </div>
+      <div class="modal-link">
+        <span class="signup-text">Already have an account? <a href="#" id="switchToLogin">Login</a></span>
+        <span class="login-text" style="display: none;">Don't have an account? <a href="#" id="switchToSignup">Sign Up</a></span>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="script.js"></script>
+</body>
+</html> 
