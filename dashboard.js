@@ -2629,7 +2629,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Notification System
-function showNotification(options) {
+function createNotification(options) {
   const container = document.getElementById('notificationContainer');
   if (!container) return;
 
@@ -2674,7 +2674,7 @@ function showNotification(options) {
 
 // Handle incoming friend request
 socket.on('friend_request', (data) => {
-  showNotification({
+  createNotification({
     type: 'friend_request',
     title: 'Friend Request',
     message: `${data.fromUser.username} sent you a friend request!`,
@@ -2684,7 +2684,7 @@ socket.on('friend_request', (data) => {
 
 // Handle friend request response
 socket.on('friend_request_response', (data) => {
-  showNotification({
+  createNotification({
     type: 'response',
     title: 'Friend Request ' + (data.accepted ? 'Accepted' : 'Rejected'),
     message: `${data.fromUser.username} ${data.accepted ? 'accepted' : 'rejected'} your friend request.`
@@ -2717,14 +2717,14 @@ async function sendFriendRequest(toUserId) {
       }
     });
 
-    showNotification({
+    createNotification({
       type: 'success',
       title: 'Request Sent',
       message: 'Friend request sent successfully!'
     });
 
   } catch (error) {
-    showNotification({
+    createNotification({
       type: 'error',
       title: 'Error',
       message: 'Failed to send friend request.'
@@ -2777,7 +2777,7 @@ async function handleFriendRequestResponse(fromUserId, accepted) {
     }
 
     // Show success message
-    showNotification({
+    createNotification({
       type: 'success',
       title: 'Success',
       message: `Friend request ${accepted ? 'accepted' : 'rejected'}.`
@@ -2789,7 +2789,7 @@ async function handleFriendRequestResponse(fromUserId, accepted) {
     }
 
   } catch (error) {
-    showNotification({
+    createNotification({
       type: 'error',
       title: 'Error',
       message: `Failed to ${accepted ? 'accept' : 'reject'} friend request.`
@@ -2799,7 +2799,7 @@ async function handleFriendRequestResponse(fromUserId, accepted) {
 
 // Update the existing showNotification function to use the new system
 window.showNotification = function(message, type = 'info') {
-  showNotification({
+  createNotification({
     type: type,
     title: type.charAt(0).toUpperCase() + type.slice(1),
     message: message
