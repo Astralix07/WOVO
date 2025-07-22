@@ -2274,19 +2274,44 @@ async function getFriendRequestStatus(currentUserId, otherUserId) {
 }
 
 // Send friend request
-async function sendFriendRequest(senderId, receiverId, btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    try {
-        const { error } = await supabase.from('friend_requests').insert({ sender_id: senderId, receiver_id: receiverId, status: 'pending' });
-        if (error) throw error;
-        btn.innerHTML = '<i class="fas fa-user-check"></i>';
-        showNotification('Friend request sent!', 'success');
-    } catch {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i>';
-        showNotification('Failed to send friend request', 'error');
-    }
+async function sendFriendRequest(toUserId) {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    if (!currentUser) return;
+
+    // First, send the request to Supabase
+    const { error } = await supabase
+      .from('friend_requests')
+      .insert([{
+        sender_id: currentUser.id,
+        receiver_id: toUserId,
+        status: 'pending'
+      }]);
+
+    if (error) throw error;
+
+    // Then, notify the user through Socket.IO
+    socket.emit('send_friend_request', {
+      toUserId: toUserId,
+      fromUser: {
+        id: currentUser.id,
+        username: currentUser.username
+      }
+    });
+
+    showNotification({
+      type: 'success',
+      title: 'Request Sent',
+      message: 'Friend request sent successfully!'
+    });
+
+  } catch (error) {
+    showNotification({
+      type: 'error',
+      title: 'Error',
+      message: 'Failed to send friend request.'
+    });
+  }
 }
 
 // Cancel outgoing friend request
@@ -2676,8 +2701,8 @@ async function sendFriendRequest(toUserId) {
     const { error } = await supabase
       .from('friend_requests')
       .insert([{
-        from_user_id: currentUser.id,
-        to_user_id: toUserId,
+        sender_id: currentUser.id,
+        receiver_id: toUserId,
         status: 'pending'
       }]);
 
@@ -2717,8 +2742,8 @@ async function handleFriendRequestResponse(fromUserId, accepted) {
     const { error: updateError } = await supabase
       .from('friend_requests')
       .update({ status: accepted ? 'accepted' : 'rejected' })
-      .eq('from_user_id', fromUserId)
-      .eq('to_user_id', currentUser.id);
+      .eq('sender_id', fromUserId)
+      .eq('receiver_id', currentUser.id);
 
     if (updateError) throw updateError;
 
@@ -2805,14 +2830,14 @@ async function updateFriendButtonState(currentUserId, targetUserId, button) {
     const { data: requestData, error: requestError } = await supabase
       .from('friend_requests')
       .select('*')
-      .or(`and(from_user_id.eq.${currentUserId},to_user_id.eq.${targetUserId}),and(from_user_id.eq.${targetUserId},to_user_id.eq.${currentUserId})`)
+      .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUserId})`)
       .eq('status', 'pending')
       .maybeSingle();
 
     if (requestError) throw requestError;
 
     if (requestData) {
-      if (requestData.from_user_id === currentUserId) {
+      if (requestData.sender_id === currentUserId) {
         button.innerHTML = '<i class="fas fa-clock"></i> Request Sent';
         button.disabled = true;
       } else {
