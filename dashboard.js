@@ -824,6 +824,22 @@ document.querySelectorAll('.friend-item').forEach(friend => {
         const friendName = friend.querySelector('.friend-name').textContent;
         const isOnline = friend.querySelector('.status-indicator.online');
         updateHeaderInfo(friendName, isOnline ? 'Online' : null);
+
+        // Show connecting message in friends-content
+        const friendsContent = document.querySelector('.friends-content');
+        if (friendsContent) {
+            friendsContent.innerHTML = `
+                <div class="connecting-message" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px 0;">
+                    <div style="font-size:54px;color:#8e44ec;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-plug"></i>
+                        <i class="fas fa-grip-lines"></i>
+                        <i class="fas fa-plug" style="transform:rotateY(180deg);"></i>
+                    </div>
+                    <h2 style="margin:0 0 12px 0;font-size:2rem;letter-spacing:1px;">PLEASE WAIT</h2>
+                    <p style="font-size:1.1rem;max-width:400px;text-align:center;">WE ARE CONNECTING YOU AND YOUR FRIEND. PLZ BE PATIENT.</p>
+                </div>
+            `;
+        }
     });
 });
 
