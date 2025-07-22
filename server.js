@@ -17,12 +17,12 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from 'WOVO' directory
+app.use(express.static(path.join(__dirname, 'WOVO')));
 
 // Serve index.html as the main page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'WOVO', 'index.html'));
 });
 
 // Socket.IO connection
