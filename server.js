@@ -9,12 +9,29 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins for dev; restrict in prod
-    methods: ['GET', 'POST']
-  }
+    origin: [
+      'https://wovo.onrender.com',
+      'http://localhost:5500', // For local development
+      'http://127.0.0.1:5500'  // For local development
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000, // How long to wait before considering connection closed
+  pingInterval: 25000 // How often to ping the client
 });
 
-app.use(cors());
+// Enable CORS for Express routes
+app.use(cors({
+  origin: [
+    'https://wovo.onrender.com',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500'
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Serve static files from current directory (WOVO)
@@ -23,6 +40,11 @@ app.use(express.static(__dirname));
 // Serve index.html as the main page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
 });
 
 // 404 fallback

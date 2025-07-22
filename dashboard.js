@@ -2593,15 +2593,32 @@ window.socket.on('test-reply', (data) => {
 });
 
 // Initialize Socket.IO connection
-const socket = io('http://localhost:3000');
+const socket = io('https://wovo-server.onrender.com', {
+  transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+  reconnectionAttempts: 5, // Try to reconnect 5 times
+  reconnectionDelay: 1000, // Wait 1 second between attempts
+  timeout: 10000 // Connection timeout after 10 seconds
+});
 
-// Connect socket with user ID
-document.addEventListener('DOMContentLoaded', () => {
+// Add connection status handling
+socket.on('connect', () => {
+  console.log('Connected to Socket.IO server');
   const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
   if (currentUser) {
     socket.emit('user_connected', currentUser.id);
   }
 });
+
+socket.on('connect_error', (error) => {
+  console.error('Socket.IO connection error:', error);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Disconnected from Socket.IO server:', reason);
+});
+
+// Remove the duplicate DOMContentLoaded event listener since we handle it in connect event
+// ... rest of existing code ...
 
 // Notification System
 function showNotification(data, type = 'friend_request') {
