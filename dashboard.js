@@ -2672,15 +2672,99 @@ function createNotification(options) {
   }
 }
 
+// Add notification sound
+const notificationSound = new Audio('https://cdn.discordapp.com/sounds/friend_request.mp3');
+
 // Handle incoming friend request
 socket.on('friend_request', (data) => {
-  createNotification({
-    type: 'friend_request',
-    title: 'Friend Request',
-    message: `${data.fromUser.username} sent you a friend request!`,
-    fromUser: data.fromUser
-  });
+  // Play notification sound
+  notificationSound.play().catch(err => console.log('Could not play notification sound'));
+
+  // Create notification with higher z-index and different position
+  const container = document.getElementById('notificationContainer');
+  if (!container) return;
+
+  const notification = document.createElement('div');
+  notification.className = 'notification friend-request-notification';
+  notification.setAttribute('data-from-user', data.fromUser.id);
+  
+  notification.innerHTML = `
+    <div class="notification-content">
+      <div class="notification-title">
+        <i class="fas fa-user-plus"></i>
+        Friend Request
+      </div>
+      <div class="notification-message">
+        <b>${data.fromUser.username}</b> sent you a friend request!
+      </div>
+      <div class="notification-actions">
+        <button class="notification-btn accept" onclick="handleFriendRequestResponse('${data.fromUser.id}', true)">Accept</button>
+        <button class="notification-btn reject" onclick="handleFriendRequestResponse('${data.fromUser.id}', false)">Reject</button>
+      </div>
+    </div>
+    <button class="notification-close" onclick="this.closest('.notification').remove()">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+
+  container.appendChild(notification);
+  requestAnimationFrame(() => notification.classList.add('show'));
+
+  // Also show browser notification if permission is granted
+  if (Notification.permission === "granted") {
+    const browserNotification = new Notification("New Friend Request", {
+      body: `${data.fromUser.username} sent you a friend request!`,
+      icon: "/assets/default-avatar.png"
+    });
+    browserNotification.onclick = function() {
+      window.focus();
+      notification.scrollIntoView({ behavior: 'smooth' });
+    };
+  }
+  // Ask for notification permission if not granted
+  else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        const browserNotification = new Notification("New Friend Request", {
+          body: `${data.fromUser.username} sent you a friend request!`,
+          icon: "/assets/default-avatar.png"
+        });
+        browserNotification.onclick = function() {
+          window.focus();
+          notification.scrollIntoView({ behavior: 'smooth' });
+        };
+      }
+    });
+  }
 });
+
+// Add styles for friend request notification
+const style = document.createElement('style');
+style.textContent = `
+  .friend-request-notification {
+    z-index: 10000;
+    background: var(--bg-floating, #18191c) !important;
+    border: 1px solid var(--accent-color, #5865f2) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  }
+
+  @keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  }
+
+  .friend-request-notification .notification-title {
+    color: var(--accent-color, #5865f2);
+  }
+
+  .friend-request-notification .notification-message b {
+    color: var(--text-primary, #f3f4f5);
+  }
+`;
+document.head.appendChild(style);
 
 // Handle friend request response
 socket.on('friend_request_response', (data) => {
