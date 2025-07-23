@@ -606,8 +606,8 @@ async function handleGroupSelection(groupElement) {
                 await leaveGroup(groupId);
             };
         }
-        // Hide leave button for owner or non-members
-        if (!memberData || (memberData && memberData.role !== 'member')) {
+        // Hide leave button for owner or non-members or admins
+        if (!memberData || memberData.role !== 'member') {
             const leaveBtn = document.getElementById('leaveBtn');
             if (leaveBtn) leaveBtn.style.display = 'none';
         }
@@ -3157,6 +3157,8 @@ async function leaveGroup(groupId) {
         // Hide leave button
         const leaveBtn = document.getElementById('leaveBtn');
         if (leaveBtn) leaveBtn.style.display = 'none';
+        // Instantly update members-sidebar
+        renderGroupMembersSidebar(groupId);
     } catch (error) {
         showNotification('Failed to leave group', 'error');
     }
