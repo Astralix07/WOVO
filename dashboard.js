@@ -819,7 +819,7 @@ document.querySelectorAll('.nav-item:not(.theme-toggle)').forEach(item => {
 });
 
 // Initialize with default group content
-document.querySelector('.groups-content').style.display = 'flex';
+// document.querySelector('.groups-content').style.display = 'flex';
 
 // Handle group item clicks
 document.querySelectorAll('.group-item').forEach(group => {
