@@ -364,6 +364,8 @@ async function joinGroup(groupId) {
         if (joinBtn) {
             joinBtn.style.display = 'none';
         }
+        // Instantly update members-sidebar
+        renderGroupMembersSidebar(groupId);
 
     } catch (error) {
         showNotification('Failed to join group', 'error');
@@ -3157,8 +3159,16 @@ async function leaveGroup(groupId) {
         // Hide leave button
         const leaveBtn = document.getElementById('leaveBtn');
         if (leaveBtn) leaveBtn.style.display = 'none';
-        // Instantly update members-sidebar
-        renderGroupMembersSidebar(groupId);
+        // Smoothly remove member from members-sidebar
+        const currentUserId = currentUser.id;
+        const memberItem = document.querySelector(`.members-sidebar .member-item[data-user-id='${currentUserId}']`);
+        if (memberItem) {
+            memberItem.style.transition = 'opacity 0.4s';
+            memberItem.style.opacity = '0';
+            setTimeout(() => {
+                memberItem.remove();
+            }, 400);
+        }
     } catch (error) {
         showNotification('Failed to leave group', 'error');
     }
