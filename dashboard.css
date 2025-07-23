@@ -3710,3 +3710,57 @@ html, body, .app {
 .notification-close:hover {
   color: var(--text-primary, #f3f4f5);
 }
+
+/* Sidebar Icons Colors */
+.sidebar-item i {
+  font-size: 1.2rem;
+  margin-right: 12px;
+  width: 24px;
+  text-align: center;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-item:hover i {
+  transform: scale(1.1);
+}
+
+/* Home icon */
+.sidebar-item[data-section="home"] i {
+  color: #5865f2;
+}
+
+/* Groups icon */
+.sidebar-item[data-section="groups"] i {
+  color: #3ba55c;
+}
+
+/* Friends icon */
+.sidebar-item[data-section="friends"] i {
+  color: #ec4444;
+}
+
+/* Tournaments icon */
+.sidebar-item[data-section="tournaments"] i {
+  color: #faa61a;
+}
+
+/* Custom Rooms icon */
+.sidebar-item[data-section="custom-rooms"] i {
+  color: #9b59b6;
+}
+
+/* Notifications icon */
+.sidebar-item[data-section="notifications"] i {
+  color: #00b0f4;
+}
+
+/* Settings icon */
+.sidebar-item[data-section="settings"] i {
+  color: #747f8d;
+}
+
+/* Active state - make icon brighter */
+.sidebar-item.active i {
+  filter: brightness(1.2);
+  transform: scale(1.1);
+}

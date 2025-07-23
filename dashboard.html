@@ -13,49 +13,51 @@
     <div class="app">
         <!-- Collapsible Sidebar -->
         <nav class="sidebar" id="sidebar">
-            <!-- Top Section -->
-            <div class="sidebar-top">
-                <button class="hamburger-btn" id="hamburger-btn">
-                    <i class="fas fa-bars"></i>
+            <div class="sidebar-header">
+                <h2>WOVO</h2>
+                <button id="toggleSidebar" class="toggle-sidebar">
+                    <i class="fas fa-chevron-left"></i>
                 </button>
-                
-                <div class="nav-item active">
+            </div>
+            <div class="sidebar-content">
+                <div class="sidebar-item active" data-section="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </div>
+                <div class="sidebar-item" data-section="groups">
                     <i class="fas fa-users"></i>
-                    <span class="nav-label">Groups</span>
+                    <span>Groups</span>
                 </div>
-                
-                <div class="nav-item">
-                    <i class="fas fa-user-friends"></i>
-                    <span class="nav-label">Friends</span>
+                <div class="sidebar-item" data-section="friends">
+                    <i class="fas fa-heart"></i>
+                    <span>Friends</span>
                 </div>
-                
-                <div class="nav-item">
+                <div class="sidebar-item" data-section="tournaments">
                     <i class="fas fa-trophy"></i>
-                    <span class="nav-label">Tournaments</span>
+                    <span>Tournaments</span>
                 </div>
-                
-                <div class="nav-item">
+                <div class="sidebar-item" data-section="custom-rooms">
                     <i class="fas fa-gamepad"></i>
-                    <span class="nav-label">Custom Rooms</span>
+                    <span>Custom Rooms</span>
+                </div>
+                <div class="sidebar-item" data-section="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                    <div class="notification-badge" style="display: none;">0</div>
+                </div>
+                <div class="sidebar-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
                 </div>
             </div>
-
-            <!-- Bottom Section -->
-            <div class="sidebar-bottom">
-                <div class="nav-item">
-                    <i class="fas fa-cog"></i>
-                    <span class="nav-label">Settings</span>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <img src="/assets/default-avatar.png" alt="Profile" id="userAvatar">
+                    <span id="username">Loading...</span>
                 </div>
-                
-                <div class="nav-item" id="logout-btn">
+                <button id="logoutBtn" class="logout-btn">
                     <i class="fas fa-sign-out-alt"></i>
-                    <span class="nav-label">Logout</span>
-                </div>
-                
-                <div class="nav-item theme-toggle" id="theme-toggle">
-                    <i class="fas fa-moon"></i>
-                    <span class="nav-label">Dark Mode</span>
-                </div>
+                </button>
             </div>
         </nav>
 
