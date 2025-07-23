@@ -434,7 +434,29 @@ html, body {
 
 .header-actions {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    align-items: center;
+}
+
+.header-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.header-actions button:hover {
+    background-color: var(--bg-modifier-hover);
+}
+
+.header-actions .leave-group-btn {
+    color: #ed4245;
+}
+
+.header-actions .leave-group-btn:hover {
+    background-color: rgba(237, 66, 69, 0.1);
 }
 
 .action-btn {

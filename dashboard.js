@@ -3107,6 +3107,12 @@ function updateGroupHeader(group) {
           <i class="fas fa-sign-out-alt"></i>
         </button>
       ` : ''}
+      <button class="invite-btn" onclick="openInviteModal('${group.id}')">
+        <i class="fas fa-user-plus"></i>
+      </button>
+      <button class="share-btn" onclick="shareGroup('${group.id}')">
+        <i class="fas fa-share-alt"></i>
+      </button>
       ${isOwner ? `
         <button class="settings-btn" onclick="openGroupSettings('${group.id}')">
           <i class="fas fa-cog"></i>
