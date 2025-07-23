@@ -25,14 +25,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 404 fallback
-app.use((req, res) => {
-  res.status(404).send('404: Page not found');
-});
-
-// Store connected users
-const connectedUsers = new Map(); // userId -> socket.id
-
 // --- Group Messaging API ---
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -138,4 +130,9 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
+});
+
+// 404 fallback (must be last)
+app.use((req, res) => {
+  res.status(404).send('404: Page not found');
 }); 
