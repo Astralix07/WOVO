@@ -1,21 +1,22 @@
 /* --- Discord-Style Group Chat --- */
-.group-chat-container {
+/* Ensure chat fills the content area */
+.content-container {
+  height: 100%;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
+}
+.group-chat-container {
+  flex: 1;
   height: 100%;
-  background: var(--bg-content);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .group-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 32px 0 16px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  background: var(--bg-content);
 }
 .group-message {
   display: flex;
@@ -129,4 +130,16 @@
 }
 #sendGroupMessageBtn:hover {
   background: var(--accent-hover);
+} 
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .group-message {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .group-message-avatar {
+    width: 32px;
+    height: 32px;
+  }
 } 
