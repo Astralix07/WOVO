@@ -304,7 +304,16 @@
                 <div class="content-container">
                     <!-- Groups Content -->
                     <div class="section-content groups-content">
-                        <!-- Group content will be dynamically added here -->
+                        <div class="group-chat-container" id="groupChatContainer" style="display:none;">
+                          <div class="group-messages" id="groupMessages"></div>
+                          <div class="group-chat-start" id="groupChatStart" style="display:none;">
+                            <span>This is the start of messaging in this group.</span>
+                          </div>
+                          <form class="group-message-form" id="groupMessageForm" autocomplete="off">
+                            <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
+                            <button type="submit" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
+                          </form>
+                        </div>
                     </div>
 
                     <!-- Friends Content -->

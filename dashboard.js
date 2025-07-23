@@ -3173,3 +3173,143 @@ async function leaveGroup(groupId) {
         showNotification('Failed to leave group', 'error');
     }
 }
+
+// Group chat UI elements
+const groupChatContainer = document.getElementById('groupChatContainer');
+const groupMessages = document.getElementById('groupMessages');
+const groupChatStart = document.getElementById('groupChatStart');
+const groupMessageForm = document.getElementById('groupMessageForm');
+const groupMessageInput = document.getElementById('groupMessageInput');
+
+// --- Group Chat Messaging Logic ---
+let currentGroupId = null;
+let groupMessagesCache = [];
+
+async function loadGroupMessages(groupId) {
+  groupMessages.innerHTML = '';
+  groupChatStart.style.display = 'none';
+  try {
+    const res = await fetch(`/api/groups/${groupId}/messages`);
+    const messages = await res.json();
+    groupMessagesCache = Array.isArray(messages) ? messages : [];
+    if (groupMessagesCache.length === 0) {
+      groupChatStart.style.display = 'block';
+    } else {
+      groupChatStart.style.display = 'none';
+      groupMessagesCache.forEach(msg => renderGroupMessage(msg));
+      groupMessages.scrollTop = groupMessages.scrollHeight;
+    }
+  } catch (e) {
+    groupChatStart.style.display = 'block';
+    groupChatStart.textContent = 'Failed to load messages.';
+  }
+}
+
+function renderGroupMessage(msg) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'group-message';
+  msgDiv.innerHTML = `
+    <div class="group-message-avatar">
+      <img src="${msg.users?.avatar_url || 'assets/default-avatar.png'}" alt="${msg.users?.username || 'User'}">
+    </div>
+    <div class="group-message-content">
+      <div class="group-message-header">
+        <span class="group-message-username">${msg.users?.username || 'User'}</span>
+        <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
+      </div>
+      <div class="group-message-text">${escapeHtml(msg.content)}</div>
+    </div>
+  `;
+  groupMessages.appendChild(msgDiv);
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(unsafe) {
+  return unsafe?.replace(/[&<"'>]/g, function(m) {
+    switch (m) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#039;';
+      default: return m;
+    }
+  });
+}
+
+// --- Socket.IO group chat ---
+let joinedGroupRoom = null;
+
+async function enterGroupChat(groupId) {
+  // Leave previous room
+  if (joinedGroupRoom) {
+    socket.emit('leave_group', joinedGroupRoom);
+  }
+  joinedGroupRoom = groupId;
+  socket.emit('join_group', groupId);
+  groupChatContainer.style.display = 'flex';
+  await loadGroupMessages(groupId);
+}
+
+// Listen for incoming group messages
+socket.on('group_message', (msg) => {
+  if (msg.group_id !== joinedGroupRoom) return;
+  renderGroupMessage(msg);
+  groupChatStart.style.display = 'none';
+  groupMessages.scrollTop = groupMessages.scrollHeight;
+});
+
+// Send message
+if (groupMessageForm) {
+  groupMessageForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = groupMessageInput.value.trim();
+    if (!content) return;
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    if (!currentUser || !joinedGroupRoom) return;
+    // Optimistically render
+    const msgObj = {
+      group_id: joinedGroupRoom,
+      user_id: currentUser.id,
+      content,
+      created_at: new Date().toISOString(),
+      users: {
+        username: currentUser.username,
+        avatar_url: currentUser.avatar_url
+      }
+    };
+    renderGroupMessage(msgObj);
+    groupMessages.scrollTop = groupMessages.scrollHeight;
+    groupChatStart.style.display = 'none';
+    groupMessageInput.value = '';
+    // Send to server (Socket.IO and REST for persistence)
+    socket.emit('group_message_send', { groupId: joinedGroupRoom, user_id: currentUser.id, content });
+    fetch(`/api/groups/${joinedGroupRoom}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id, content })
+    });
+  });
+}
+
+// --- Hook into group selection ---
+const originalHandleGroupSelection = handleGroupSelection;
+handleGroupSelection = async function(groupElement) {
+  await originalHandleGroupSelection.apply(this, arguments);
+  // Get groupId from element
+  let groupData = {};
+  try {
+    groupData = JSON.parse(groupElement.dataset.groupData || '{}');
+  } catch {}
+  const groupId = groupData.id || groupElement.getAttribute('data-group-id');
+  if (groupId && !groupId.toString().startsWith('default-')) {
+    enterGroupChat(groupId);
+  } else {
+    groupChatContainer.style.display = 'none';
+  }
+};

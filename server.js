@@ -33,7 +33,38 @@ app.use((req, res) => {
 // Store connected users
 const connectedUsers = new Map(); // userId -> socket.id
 
-// Socket.IO connection
+// --- Group Messaging API ---
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+// Get messages for a group
+app.get('/api/groups/:groupId/messages', async (req, res) => {
+  const { groupId } = req.params;
+  const { data, error } = await supabase
+    .from('group_messages')
+    .select('*, users(username, avatar_url)')
+    .eq('group_id', groupId)
+    .order('created_at', { ascending: true })
+    .limit(100);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Post a new message to a group
+app.post('/api/groups/:groupId/messages', async (req, res) => {
+  const { groupId } = req.params;
+  const { user_id, content } = req.body;
+  if (!user_id || !content) return res.status(400).json({ error: 'Missing user_id or content' });
+  const { data, error } = await supabase
+    .from('group_messages')
+    .insert([{ group_id: groupId, user_id, content }])
+    .select('*, users(username, avatar_url)')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// --- Socket.IO for group messaging ---
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
@@ -71,6 +102,29 @@ io.on('connection', (socket) => {
         timestamp: new Date().toISOString()
       });
     }
+  });
+
+  // Join group room
+  socket.on('join_group', (groupId) => {
+    socket.join(`group_${groupId}`);
+  });
+  // Leave group room
+  socket.on('leave_group', (groupId) => {
+    socket.leave(`group_${groupId}`);
+  });
+  // Handle sending a message
+  socket.on('group_message_send', async (msg) => {
+    // msg: { groupId, user_id, content }
+    if (!msg.groupId || !msg.user_id || !msg.content) return;
+    // Save to DB
+    const { data, error } = await supabase
+      .from('group_messages')
+      .insert([{ group_id: msg.groupId, user_id: msg.user_id, content: msg.content }])
+      .select('*, users(username, avatar_url)')
+      .single();
+    if (error) return;
+    // Broadcast to group room
+    io.to(`group_${msg.groupId}`).emit('group_message', data);
   });
 
   socket.on('disconnect', () => {
