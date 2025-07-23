@@ -434,29 +434,7 @@ html, body {
 
 .header-actions {
     display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.header-actions button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.header-actions button:hover {
-    background-color: var(--bg-modifier-hover);
-}
-
-.header-actions .leave-group-btn {
-    color: #ed4245;
-}
-
-.header-actions .leave-group-btn:hover {
-    background-color: rgba(237, 66, 69, 0.1);
+    gap: 12px;
 }
 
 .action-btn {
@@ -3737,20 +3715,25 @@ html, body, .app {
   color: #5865f2;
 }
 
-.leave-group-btn {
-  background: none;
+.leave-btn {
+  background: var(--bg-hover);
+  color: #f23f42;
   border: none;
-  color: #ed4245;
-  cursor: pointer;
-  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
 }
-
-.leave-group-btn:hover {
-  background-color: rgba(237, 66, 69, 0.1);
+.leave-btn i {
+  color: #f23f42;
 }
-
-.leave-group-btn i {
-  font-size: 18px;
+.leave-btn:hover {
+  background: #f23f42;
+  color: #fff;
+}
+.leave-btn:hover i {
+  color: #fff;
 }
