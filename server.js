@@ -73,6 +73,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Add group member left event handler
+  socket.on('group_member_left', async (data) => {
+    const { groupId, userId } = data;
+    // Broadcast to all connected clients except sender
+    socket.broadcast.emit('group_member_left', { groupId, userId });
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     if (socket.userId) {

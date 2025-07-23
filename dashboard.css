@@ -3714,3 +3714,21 @@ html, body, .app {
 .sidebar i {
   color: #5865f2;
 }
+
+.leave-group-btn {
+  background: none;
+  border: none;
+  color: #ed4245;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.leave-group-btn:hover {
+  background-color: rgba(237, 66, 69, 0.1);
+}
+
+.leave-group-btn i {
+  font-size: 18px;
+}

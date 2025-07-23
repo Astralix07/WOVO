@@ -3089,3 +3089,81 @@ async function loadFriendsList() {
     `;
   }
 }
+
+// Update updateGroupHeader function to include leave button
+function updateGroupHeader(group) {
+  const header = document.querySelector('.content-header');
+  if (!header || !group) return;
+
+  const currentUserId = supabase.auth.user()?.id;
+  const isOwner = group.owner_id === currentUserId;
+  const isMember = group.members?.includes(currentUserId);
+
+  header.innerHTML = `
+    <h2>${group.name}</h2>
+    <div class="header-actions">
+      ${!isOwner && isMember ? `
+        <button class="leave-group-btn" onclick="leaveGroup('${group.id}')">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      ` : ''}
+      ${isOwner ? `
+        <button class="settings-btn" onclick="openGroupSettings('${group.id}')">
+          <i class="fas fa-cog"></i>
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+// Add leave group function
+async function leaveGroup(groupId) {
+  try {
+    const user = supabase.auth.user();
+    if (!user) return;
+
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .select('members')
+      .eq('id', groupId)
+      .single();
+
+    if (groupError) throw groupError;
+
+    const updatedMembers = group.members.filter(memberId => memberId !== user.id);
+
+    const { error: updateError } = await supabase
+      .from('groups')
+      .update({ members: updatedMembers })
+      .eq('id', groupId);
+
+    if (updateError) throw updateError;
+
+    // Emit socket event for real-time update
+    socket.emit('group_member_left', { groupId, userId: user.id });
+
+    // Clear group display and show default content
+    document.querySelector('.content-area').innerHTML = `
+      <div class="default-content">
+        <h2>Select a group to view details</h2>
+      </div>
+    `;
+    
+    // Update groups list
+    await loadGroups();
+
+    createNotification({
+      type: 'success',
+      title: 'Success',
+      message: 'You have left the group'
+    });
+
+  } catch (error) {
+    console.error('Error leaving group:', error);
+    createNotification({
+      type: 'error',
+      title: 'Error',
+      message: 'Failed to leave group'
+    });
+  }
+}
