@@ -108,9 +108,12 @@ io.on('connection', (socket) => {
     socket.leave(`group_${groupId}`);
   });
   // Handle sending a message
-  socket.on('group_message_send', async (msg) => {
-    // msg: { groupId, user_id, content }
-    if (!msg.groupId || !msg.user_id || !msg.content) return;
+  socket.on('group_message_send', async (msg, callback) => {
+    // msg: { groupId, user_id, content, ... }
+    if (!msg.groupId || !msg.user_id) {
+        if (callback) callback({ status: 'error', message: 'Missing data' });
+        return;
+    }
     
     // Just save to DB. Real-time will handle broadcasting.
     const { error } = await supabase
@@ -118,7 +121,7 @@ io.on('connection', (socket) => {
       .insert([{ 
         group_id: msg.groupId, 
         user_id: msg.user_id, 
-        content: msg.content,
+        content: msg.content || null, // Allow empty caption
         reply_to_message_id: msg.reply_to_message_id,
         media_url: msg.media_url,
         media_type: msg.media_type
@@ -126,6 +129,9 @@ io.on('connection', (socket) => {
 
     if (error) {
         console.error('Error saving message:', error);
+        if (callback) callback({ status: 'error', message: error.message });
+    } else {
+        if (callback) callback({ status: 'ok' });
     }
   });
 

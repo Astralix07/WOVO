@@ -112,9 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     media_type: data.resource_type
                 };
 
-                socket.emit('group_message_send', messagePayload);
-
-                closeModal();
+                socket.emit('group_message_send', messagePayload, (response) => {
+                    if (response.status === 'error') {
+                        showNotification(`Server Error: ${response.message}`, 'error');
+                    } else {
+                        closeModal();
+                    }
+                });
 
             } catch (error) {
                 console.error('Full upload error:', error);
