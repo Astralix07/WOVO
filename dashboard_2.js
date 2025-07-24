@@ -166,4 +166,101 @@ document.addEventListener('DOMContentLoaded', () => {
             URL.revokeObjectURL(previewUrl);
         }
     }
+
+    // --- USER MENTIONS LOGIC ---
+    const userMentionsPopup = document.getElementById('userMentionsPopup');
+    let groupMembers = [];
+    let mentionQuery = '';
+    let selectedMentionIndex = 0;
+
+    if (groupMessageInput) {
+        groupMessageInput.addEventListener('input', handleMentionInput);
+    }
+
+    async function handleMentionInput(e) {
+        const text = e.target.value;
+        const cursorPos = e.target.selectionStart;
+        const atMatch = text.slice(0, cursorPos).match(/@(\w*)$/);
+
+        if (atMatch) {
+            mentionQuery = atMatch[1].toLowerCase();
+            if (groupMembers.length === 0) {
+                await fetchGroupMembers();
+            }
+            const filteredMembers = groupMembers.filter(m => 
+                m.users.username.toLowerCase().includes(mentionQuery)
+            );
+            renderMentionPopup(filteredMembers);
+        } else {
+            userMentionsPopup.style.display = 'none';
+        }
+    }
+
+    async function fetchGroupMembers() {
+        if (!joinedGroupRoom) return;
+        const { data, error } = await supabase
+            .from('group_members')
+            .select('users(id, username, avatar_url)')
+            .eq('group_id', joinedGroupRoom);
+        if (!error) {
+            groupMembers = data;
+        }
+    }
+
+    function renderMentionPopup(members) {
+        if (members.length === 0) {
+            userMentionsPopup.style.display = 'none';
+            return;
+        }
+        userMentionsPopup.innerHTML = members.map((m, index) => `
+            <div class="mention-item ${index === selectedMentionIndex ? 'selected' : ''}" data-user-id="${m.users.id}" data-username="${m.users.username}">
+                <img src="${m.users.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+                <span class="username">${m.users.username}</span>
+            </div>
+        `).join('');
+        userMentionsPopup.style.display = 'block';
+
+        // Add click listeners to items
+        userMentionsPopup.querySelectorAll('.mention-item').forEach(item => {
+            item.addEventListener('click', () => selectMention(item));
+        });
+    }
+
+    function selectMention(selectedItem) {
+        const username = selectedItem.dataset.username;
+        const userId = selectedItem.dataset.userId;
+        const currentText = groupMessageInput.value;
+        const cursorPos = groupMessageInput.selectionStart;
+        
+        const textBefore = currentText.slice(0, cursorPos).replace(/@(\w*)$/, '');
+        const textAfter = currentText.slice(cursorPos);
+        
+        // Format: @[Username](userId)
+        const mentionText = `@[${username}](${userId}) `;
+        
+        groupMessageInput.value = textBefore + mentionText + textAfter;
+        userMentionsPopup.style.display = 'none';
+        groupMessageInput.focus();
+    }
+
+    // Handle keyboard navigation for mentions
+    if (groupMessageInput) {
+        groupMessageInput.addEventListener('keydown', (e) => {
+            if (userMentionsPopup.style.display === 'block') {
+                const items = userMentionsPopup.querySelectorAll('.mention-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedMentionIndex = (selectedMentionIndex + 1) % items.length;
+                    renderMentionPopup(Array.from(items).map(i => groupMembers.find(m => m.users.id === i.dataset.userId)));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedMentionIndex = (selectedMentionIndex - 1 + items.length) % items.length;
+                    renderMentionPopup(Array.from(items).map(i => groupMembers.find(m => m.users.id === i.dataset.userId)));
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    selectMention(items[selectedMentionIndex]);
+                }
+            }
+        });
+    }
 }); 

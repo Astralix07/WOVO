@@ -114,6 +114,16 @@ io.on('connection', (socket) => {
         if (callback) callback({ status: 'error', message: 'Missing data' });
         return;
     }
+
+    // --- Extract mentions from content ---
+    const mentioned_users = [];
+    if (msg.content) {
+        const mentionRegex = /@\[(.+?)\]\((.+?)\)/g;
+        let match;
+        while ((match = mentionRegex.exec(msg.content)) !== null) {
+            mentioned_users.push(match[2]);
+        }
+    }
     
     // Just save to DB. Real-time will handle broadcasting.
     const { error } = await supabase
@@ -125,7 +135,8 @@ io.on('connection', (socket) => {
         reply_to_message_id: msg.reply_to_message_id,
         media_url: msg.media_url,
         media_type: msg.media_type,
-        client_temp_id: msg.client_temp_id
+        client_temp_id: msg.client_temp_id,
+        mentioned_users: mentioned_users.length > 0 ? mentioned_users : null
       }]);
 
     if (error) {

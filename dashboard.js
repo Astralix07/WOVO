@@ -3299,7 +3299,15 @@ function renderGroupMessage(msg, isNew = false) {
                 <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
                 ${msg.is_edited ? '<span class="message-edited-tag">(edited)</span>' : ''}
             </div>
-            ${msg.content ? `<div class="group-message-text">${escapeHtml(msg.content)}</div>` : ''}
+            ${
+                msg.content
+                ? (
+                    msg.content.startsWith('# ')
+                    ? `<h1 class="message-heading">${formatMessageContent(msg.content.substring(2))}</h1>`
+                    : `<div class="group-message-text">${formatMessageContent(msg.content)}</div>`
+                )
+                : ''
+            }
         </div>
         ${messageActions}
     `;
@@ -3792,4 +3800,13 @@ async function toggleReaction(messageId, emoji) {
             emoji
         });
     }
+}
+
+function formatMessageContent(content) {
+    if (!content) return '';
+    const mentionRegex = /@\[(.+?)\]\((.+?)\)/g;
+    // Escape HTML first, then replace the mention format with a span
+    return escapeHtml(content).replace(mentionRegex, (match, username, userId) => {
+        return `<span class="mention-highlight" data-user-id="${escapeHtml(userId)}">@${escapeHtml(username)}</span>`;
+    });
 }

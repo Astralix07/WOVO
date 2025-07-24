@@ -297,6 +297,66 @@
     transition: width 0.1s linear;
 }
 
+/* User Mentions */
+.user-mentions-popup {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.mention-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.mention-item:hover, .mention-item.selected {
+    background: var(--bg-hover);
+}
+
+.mention-item img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.mention-item .username {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.mention-highlight {
+    background: hsla(235, 85.6%, 64.7%, 0.3);
+    color: hsl(235, 85.6%, 90%);
+    font-weight: 500;
+    padding: 0 2px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.mention-highlight:hover {
+    background: hsl(235, 85.6%, 64.7%);
+    color: #fff;
+}
+
+.message-heading {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-primary);
+}
+
 
 /* --- New Message Features UI --- */
 
