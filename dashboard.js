@@ -200,19 +200,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const membersSidebar = document.querySelector('.members-sidebar');
-    const toggleMembersSidebarBtn = document.querySelector('.toggle-members-sidebar');
-    // Restore sidebar state from localStorage
-    if (membersSidebar && localStorage.getItem('membersSidebarCollapsed') === 'true') {
-        membersSidebar.classList.add('collapsed');
-        if (toggleMembersSidebarBtn) toggleMembersSidebarBtn.title = 'Show Members Sidebar';
+    // Members Sidebar Hide/Show Logic
+    const membersSidebar = document.getElementById('membersSidebar');
+    const toggleMembersSidebarBtn = document.getElementById('toggleMembersSidebar');
+    const showMembersSidebarBtn = document.getElementById('showMembersSidebar');
+    const contentArea = document.querySelector('.content-area');
+
+    function setMembersSidebarState(hidden) {
+        if (hidden) {
+            membersSidebar.classList.add('collapsed');
+            contentArea.classList.add('expanded');
+            showMembersSidebarBtn.style.display = 'flex';
+            localStorage.setItem('membersSidebarHidden', 'true');
+        } else {
+            membersSidebar.classList.remove('collapsed');
+            contentArea.classList.remove('expanded');
+            showMembersSidebarBtn.style.display = 'none';
+            localStorage.setItem('membersSidebarHidden', 'false');
+        }
     }
-    if (toggleMembersSidebarBtn && membersSidebar) {
+
+    // Restore state on load
+    if (localStorage.getItem('membersSidebarHidden') === 'true') {
+        setMembersSidebarState(true);
+    }
+
+    if (toggleMembersSidebarBtn) {
         toggleMembersSidebarBtn.addEventListener('click', () => {
-            membersSidebar.classList.toggle('collapsed');
-            const isCollapsed = membersSidebar.classList.contains('collapsed');
-            localStorage.setItem('membersSidebarCollapsed', isCollapsed);
-            toggleMembersSidebarBtn.title = isCollapsed ? 'Show Members Sidebar' : 'Hide Members Sidebar';
+            setMembersSidebarState(true);
+        });
+    }
+    if (showMembersSidebarBtn) {
+        showMembersSidebarBtn.addEventListener('click', () => {
+            setMembersSidebarState(false);
         });
     }
 });
