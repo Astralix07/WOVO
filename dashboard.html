@@ -271,10 +271,6 @@
 
         <!-- Main Content Area -->
         <main class="content-area">
-            <!-- Toggle Members Sidebar Button -->
-            <button class="toggle-members-sidebar-btn" id="toggleMembersSidebarBtn" title="Show/Hide Members Sidebar">
-                <i class="fas fa-users"></i>
-            </button>
             <!-- Default Content -->
             <div class="main-content-section active" id="default-content">
                 <header class="content-header">
@@ -671,7 +667,10 @@
         </main>
 
         <!-- Members Sidebar (Right) -->
-        <aside class="members-sidebar">
+        <aside class="members-sidebar" id="membersSidebar">
+            <button class="toggle-members-sidebar" id="toggleMembersSidebar" title="Hide Members Sidebar" aria-label="Hide Members Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
             <div class="members-header">
                 <h3>MEMBERS</h3>
             </div>
