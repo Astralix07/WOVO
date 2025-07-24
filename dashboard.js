@@ -606,7 +606,7 @@ async function handleGroupSelection(groupElement) {
             // Admin - show settings button
             settingsBtn.style.display = 'flex';
             settingsBtn.onclick = () => showGroupSettings(groupId);
-        } else if (memberData.role === 'member') {
+        } else { // 'member' or any other role
             // Member - show leave button
             let leaveBtn = document.getElementById('leaveBtn');
             if (!leaveBtn) {
@@ -2595,7 +2595,7 @@ async function renderFriendsList() {
     let html = '';
     if (online.length) {
         html += `<div class="friend-category"><h4>ONLINE — ${online.length}</h4>${online.map(friend => `
-            <div class="friend-item">
+            <div class="friend-item" data-user-id="${friend.id}">
                 <div class="friend-avatar"><div class="status-indicator online"></div><img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"></div>
                 <div class="friend-info">
                     <div class="friend-name">${friend.username}</div>
@@ -2606,7 +2606,7 @@ async function renderFriendsList() {
     }
     if (offline.length) {
         html += `<div class="friend-category"><h4>OFFLINE — ${offline.length}</h4>${offline.map(friend => `
-            <div class="friend-item">
+            <div class="friend-item" data-user-id="${friend.id}">
                 <div class="friend-avatar"><div class="status-indicator offline"></div><img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"></div>
                 <div class="friend-info">
                     <div class="friend-name">${friend.username}</div>
@@ -3289,27 +3289,15 @@ if (groupMessageForm) {
     if (!content) return;
     const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
     if (!currentUser || !joinedGroupRoom) return;
-    // Optimistically render
-    const msgObj = {
-      group_id: joinedGroupRoom,
-      user_id: currentUser.id,
-      content,
-      created_at: new Date().toISOString(),
-      users: {
-        username: currentUser.username,
-        avatar_url: currentUser.avatar_url
-      }
-    };
-    renderGroupMessage(msgObj);
-    groupMessages.scrollTop = groupMessages.scrollHeight;
-    groupChatStart.style.display = 'none';
+    
+    // Clear the input field immediately
     groupMessageInput.value = '';
-    // Send to server (Socket.IO and REST for persistence)
-    socket.emit('group_message_send', { groupId: joinedGroupRoom, user_id: currentUser.id, content });
-    fetch(`/api/groups/${joinedGroupRoom}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id, content })
+
+    // Send to server via Socket.IO
+    socket.emit('group_message_send', { 
+        groupId: joinedGroupRoom, 
+        user_id: currentUser.id, 
+        content 
     });
   });
 }
