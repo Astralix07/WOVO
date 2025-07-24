@@ -3299,7 +3299,7 @@ function renderGroupMessage(msg, isNew = false) {
                 <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
                 ${msg.is_edited ? '<span class="message-edited-tag">(edited)</span>' : ''}
             </div>
-            <div class="group-message-text">${escapeHtml(msg.content)}</div>
+            ${msg.content ? `<div class="group-message-text">${escapeHtml(msg.content)}</div>` : ''}
         </div>
         ${messageActions}
     `;
