@@ -283,25 +283,32 @@
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="action-btn join-btn" id="joinBtn" style="display: none;">
-                            <i class="fas fa-sign-in-alt"></i>
-                            <span>Join</span>
-                        </button>
-                        <button class="action-btn" id="inviteBtn">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Invite</span>
-                        </button>
-                        <button class="action-btn" id="shareBtn">
-                            <i class="fas fa-share-alt"></i>
-                            <span>Share</span>
-                        </button>
-                        <button class="action-btn" id="toggleMembersBtn" title="Toggle Members List">
-                            <i class="fas fa-users"></i>
-                        </button>
-                        <button class="action-btn" id="groupSettingsBtn" style="display: none;">
-                            <i class="fas fa-cog"></i>
-                            <span>Settings</span>
-                        </button>
+                        <div class="header-actions-desktop">
+                            <button class="action-btn join-btn" id="joinBtn" style="display: none;">
+                                <i class="fas fa-sign-in-alt"></i>
+                                <span>Join</span>
+                            </button>
+                            <button class="action-btn" id="inviteBtn">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Invite</span>
+                            </button>
+                            <button class="action-btn" id="shareBtn">
+                                <i class="fas fa-share-alt"></i>
+                                <span>Share</span>
+                            </button>
+                            <button class="action-btn" id="groupSettingsBtn" style="display: none;">
+                                <i class="fas fa-cog"></i>
+                                <span>Settings</span>
+                            </button>
+                        </div>
+                        <div class="header-actions-mobile">
+                            <button class="action-btn" id="mobileMenuBtn">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="mobile-menu" id="mobileMenu">
+                                <!-- Mobile actions will be populated here by JS -->
+                            </div>
+                        </div>
                     </div>
                 </header>
                 <div class="content-container" id="contentContainer">
@@ -670,6 +677,11 @@
                 </div>
             </div>
         </main>
+
+        <!-- Toggle Button for Members Sidebar -->
+        <button class="action-btn" id="toggleMembersBtn" title="Toggle Members List">
+            <i class="fas fa-users"></i>
+        </button>
 
         <!-- Members Sidebar (Right) -->
         <aside class="members-sidebar">
@@ -1151,6 +1163,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="dashboard.js"></script>
+    <script src="dashboard_2.js"></script>
     <script src="components/group-settings.js"></script>
 </body>
 </html> 

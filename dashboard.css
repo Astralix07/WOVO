@@ -3749,10 +3749,95 @@ html, body, .app {
 }
 
 #toggleMembersBtn {
-    transition: all 0.2s ease;
+    position: absolute;
+    top: 50%;
+    right: 278px;
+    transform: translateY(-50%) translateX(50%);
+    z-index: 10;
+    border-radius: 50% 0 0 50%;
+    padding: 12px 6px;
+    height: 72px;
+    width: 36px;
+    transition: all 0.3s ease;
+}
+
+.app.members-sidebar-hidden #toggleMembersBtn {
+    right: 0;
+}
+
+#toggleMembersBtn i {
+    transition: transform 0.3s ease;
+}
+
+.app.members-sidebar-hidden #toggleMembersBtn i {
+    transform: rotate(180deg);
 }
 
 #toggleMembersBtn.active {
     background-color: var(--accent-color);
     color: white;
+}
+
+/* ... existing code ... */
+.action-btn:hover i {
+    transform: rotate(45deg);
+} 
+
+/* --- Mobile Header Actions --- */
+.header-actions-mobile {
+    display: none; /* Hidden by default */
+    position: relative;
+}
+
+.mobile-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    overflow: hidden;
+    z-index: 20;
+    transform: scale(0.95);
+    transform-origin: top right;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.1, 0.82, 0.25, 1);
+}
+
+.mobile-menu.active {
+    transform: scale(1);
+    opacity: 1;
+    visibility: visible;
+}
+
+.mobile-menu .action-btn {
+    display: flex;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 0;
+    background: transparent;
+}
+
+.mobile-menu .action-btn:hover {
+    background: var(--bg-hover);
+}
+
+
+/* --- Responsive Header --- */
+@media (max-width: 768px) {
+    .header-actions-desktop {
+        display: none;
+    }
+    .header-actions-mobile {
+        display: block;
+    }
+}
+
+/* --- Improved Members Sidebar Styles --- */
+.members-sidebar {
+    width: 260px;
+    background: var(--bg-secondary);
+    padding: 16px 8px;
+    flex-shrink: 0;
 }

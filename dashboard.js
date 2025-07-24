@@ -11,6 +11,7 @@ const sidebar = document.getElementById('sidebar');
 const hamburgerBtn = document.getElementById('hamburger-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const html = document.documentElement;
+const emojiPicker = document.querySelector('emoji-picker');
 
 // Initialize theme from localStorage
 const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -3696,7 +3697,6 @@ async function renderReactions(messageId, container) {
 }
 
 // --- EMOJI REACTIONS LOGIC ---
-const emojiPicker = document.querySelector('emoji-picker');
 const emojiPickerContainer = document.querySelector('.emoji-picker-container');
 let currentMessageForReaction = null;
 
