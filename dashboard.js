@@ -202,10 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const membersSidebar = document.querySelector('.members-sidebar');
     const toggleMembersSidebarBtn = document.getElementById('toggleMembersSidebarBtn');
-    if (toggleMembersSidebarBtn && membersSidebar) {
+    const appContainer = document.querySelector('.app');
+    if (toggleMembersSidebarBtn && membersSidebar && appContainer) {
         toggleMembersSidebarBtn.addEventListener('click', () => {
             membersSidebar.classList.toggle('hidden');
             toggleMembersSidebarBtn.classList.toggle('sidebar-hidden', membersSidebar.classList.contains('hidden'));
+            appContainer.classList.toggle('members-sidebar-hidden', membersSidebar.classList.contains('hidden'));
         });
     }
 });
