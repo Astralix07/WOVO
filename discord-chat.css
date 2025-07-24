@@ -228,6 +228,21 @@
   color: var(--text-muted);
   margin-bottom: 4px;
   cursor: pointer;
+  position: relative;
+  padding-left: 20px;
+}
+
+.reply-context::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-left: 2px solid var(--text-muted);
+    border-bottom: 2px solid var(--text-muted);
+    border-bottom-left-radius: 4px;
 }
 
 .reply-context img {

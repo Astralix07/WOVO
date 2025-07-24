@@ -3256,14 +3256,16 @@ function renderGroupMessage(msg, isNew = false) {
     const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
     const isOwner = msg.user_id === currentUser.id;
 
-    // Add message actions for owner
-    const messageActions = isOwner ? `
+    // Add message actions for owner and reply for all
+    const messageActions = `
         <div class="message-actions">
             <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
-            <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
-            <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+            ${isOwner ? `
+                <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+            ` : ''}
         </div>
-    ` : '';
+    `;
 
     // Handle replied messages
     let replyContextHtml = '';
@@ -3318,6 +3320,7 @@ function escapeHtml(unsafe) {
 // --- Socket.IO group chat ---
 let joinedGroupRoom = null;
 let messageSubscription = null;
+const userCache = {};
 
 async function enterGroupChat(groupId) {
   // Leave previous room and unsubscribe
@@ -3338,17 +3341,55 @@ async function enterGroupChat(groupId) {
         schema: 'public', 
         table: 'group_messages', 
         filter: `group_id=eq.${groupId}` 
-    }, (payload) => {
+    }, async (payload) => {
+        const messageId = payload.new?.id || payload.old?.id;
+        const existingEl = document.querySelector(`.group-message[data-message-id="${messageId}"]`);
+
+        // Handle deleted messages
+        if (payload.eventType === 'UPDATE' && payload.new.is_deleted) {
+            if (existingEl) {
+                existingEl.classList.add('deleted');
+                existingEl.innerHTML = `
+                    <div class="group-message-avatar"></div>
+                    <div class="group-message-content">
+                        <div class="group-message-text">(message deleted)</div>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        // Handle new or edited messages
         if (payload.new) {
-            renderGroupMessage(payload.new, true);
-            groupMessages.scrollTop = groupMessages.scrollHeight;
+            const message = payload.new;
+
+            // Fetch user data if not in cache
+            if (!userCache[message.user_id]) {
+                const { data: userData } = await supabase.from('users').select('username, avatar_url').eq('id', message.user_id).single();
+                userCache[message.user_id] = userData || {};
+            }
+            message.users = userCache[message.user_id];
+
+            // Fetch replied-to message if it exists
+            if (message.reply_to_message_id && !message.reply_to) {
+                const { data: repliedMsgData } = await supabase.from('group_messages').select('*, users(username, avatar_url)').eq('id', message.reply_to_message_id).single();
+                message.reply_to = repliedMsgData;
+            }
+
+            if (existingEl) { // Message is being edited
+                existingEl.remove();
+                renderGroupMessage(message, false);
+            } else { // It's a new message
+                renderGroupMessage(message, true);
+                groupMessages.scrollTop = groupMessages.scrollHeight;
+            }
         }
     })
     .subscribe();
 }
 
 // Listen for incoming group messages
-// This is now handled by the real-time subscription in enterGroupChat
+// ... existing code ...
 
 // Send message
 if (groupMessageForm) {
@@ -3402,7 +3443,10 @@ handleGroupSelection = async function(groupElement) {
 async function deleteMessage(messageId) {
     const { error } = await supabase
         .from('group_messages')
-        .update({ is_deleted: true, content: '(message deleted)' })
+        .update({ 
+            is_deleted: true, 
+            content: '(message deleted)' 
+        })
         .eq('id', messageId);
 
     if (error) {
@@ -3412,13 +3456,12 @@ async function deleteMessage(messageId) {
 
 // Add event listener for message actions
 document.addEventListener('click', (e) => {
-    if (e.target.closest('.action-btn-icon.delete')) {
-        const messageElement = e.target.closest('.group-message');
+    const deleteBtn = e.target.closest('.action-btn-icon.delete');
+    if (deleteBtn) {
+        const messageElement = deleteBtn.closest('.group-message');
         if (messageElement) {
             const messageId = messageElement.dataset.messageId;
-            if (confirm('Are you sure you want to delete this message?')) {
-                deleteMessage(messageId);
-            }
+            deleteMessage(messageId);
         }
     } else if (e.target.closest('.action-btn-icon.edit')) {
         const messageElement = e.target.closest('.group-message');
@@ -3487,7 +3530,12 @@ let currentReplyTo = null;
 function setupReply(messageElement) {
     const messageId = messageElement.dataset.messageId;
     const username = messageElement.querySelector('.group-message-username').textContent;
-    const messageText = messageElement.querySelector('.group-message-text').textContent;
+    let messageText = messageElement.querySelector('.group-message-text').textContent;
+
+    // Truncate long messages
+    if (messageText.length > 50) {
+        messageText = messageText.substring(0, 47) + '...';
+    }
     
     currentReplyTo = { id: messageId, username, messageText };
 
