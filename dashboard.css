@@ -3116,6 +3116,9 @@ input:checked + .toggle-slider:before {
 }
 
 .members-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 8px 8px 16px 8px;
     color: var(--text-secondary);
     font-size: 15px;
