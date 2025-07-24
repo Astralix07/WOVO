@@ -295,6 +295,9 @@
                             <i class="fas fa-share-alt"></i>
                             <span>Share</span>
                         </button>
+                        <button class="action-btn" id="toggleMembersBtn" title="Toggle Members List">
+                            <i class="fas fa-users"></i>
+                        </button>
                         <button class="action-btn" id="groupSettingsBtn" style="display: none;">
                             <i class="fas fa-cog"></i>
                             <span>Settings</span>
@@ -666,15 +669,8 @@
             </div>
         </main>
 
-        <button class="show-members-btn" id="showMembersSidebar" title="Show Members Sidebar" aria-label="Show Members Sidebar" style="display:none;">
-            <i class="fas fa-chevron-left"></i>
-        </button>
-
         <!-- Members Sidebar (Right) -->
-        <aside class="members-sidebar" id="membersSidebar">
-            <button class="hide-members-btn" id="toggleMembersSidebar" title="Hide Members Sidebar" aria-label="Hide Members Sidebar">
-                <i class="fas fa-chevron-right"></i>
-            </button>
+        <aside class="members-sidebar">
             <div class="members-header">
                 <h3>MEMBERS</h3>
             </div>

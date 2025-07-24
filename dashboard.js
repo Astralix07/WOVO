@@ -29,6 +29,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsCategories = document.querySelectorAll('.settings-category');
     const settingsSections = document.querySelectorAll('.settings-section');
 
+    // Toggle Members Sidebar
+    const toggleMembersBtn = document.getElementById('toggleMembersBtn');
+    const appContainer = document.querySelector('.app');
+
+    if (toggleMembersBtn && appContainer) {
+        toggleMembersBtn.addEventListener('click', () => {
+            appContainer.classList.toggle('members-sidebar-hidden');
+            toggleMembersBtn.classList.toggle('active');
+            localStorage.setItem('membersSidebarHidden', appContainer.classList.contains('members-sidebar-hidden'));
+        });
+
+        if (localStorage.getItem('membersSidebarHidden') === 'true') {
+            appContainer.classList.add('members-sidebar-hidden');
+            toggleMembersBtn.classList.add('active');
+        }
+    }
+
     // Initialize section toggles
     const toggleButtons = document.querySelectorAll('.toggle-section');
     if (toggleButtons) {
@@ -197,42 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 refreshBtn.disabled = false;
                 refreshBtn.innerHTML = originalHtml;
             }
-        });
-    }
-
-    // Members Sidebar Hide/Show Logic
-    const membersSidebar = document.getElementById('membersSidebar');
-    const toggleMembersSidebarBtn = document.getElementById('toggleMembersSidebar');
-    const showMembersSidebarBtn = document.getElementById('showMembersSidebar');
-    const contentArea = document.querySelector('.content-area');
-
-    function setMembersSidebarState(hidden) {
-        if (hidden) {
-            membersSidebar.classList.add('collapsed');
-            contentArea.classList.add('expanded');
-            showMembersSidebarBtn.style.display = 'flex';
-            localStorage.setItem('membersSidebarHidden', 'true');
-        } else {
-            membersSidebar.classList.remove('collapsed');
-            contentArea.classList.remove('expanded');
-            showMembersSidebarBtn.style.display = 'none';
-            localStorage.setItem('membersSidebarHidden', 'false');
-        }
-    }
-
-    // Restore state on load
-    if (localStorage.getItem('membersSidebarHidden') === 'true') {
-        setMembersSidebarState(true);
-    }
-
-    if (toggleMembersSidebarBtn) {
-        toggleMembersSidebarBtn.addEventListener('click', () => {
-            setMembersSidebarState(true);
-        });
-    }
-    if (showMembersSidebarBtn) {
-        showMembersSidebarBtn.addEventListener('click', () => {
-            setMembersSidebarState(false);
         });
     }
 });

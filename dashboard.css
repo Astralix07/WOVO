@@ -3113,6 +3113,8 @@ input:checked + .toggle-slider:before {
     border-left: 1px solid var(--border-color, #23272a);
     overflow-y: auto;
     box-shadow: 0 0 8px 0 rgba(0,0,0,0.08);
+    transition: width 0.3s ease, padding 0.3s ease, border-left-width 0.3s ease;
+    overflow-x: hidden;
 }
 
 .members-header {
@@ -3738,80 +3740,19 @@ html, body, .app {
   color: #fff;
 }
 
-.hide-members-btn {
-    position: absolute;
-    left: -32px;
-    top: 16px;
-    width: 28px;
-    height: 40px;
-    background: var(--bg-secondary);
-    border: none;
-    border-radius: 8px 0 0 8px;
-    color: var(--text-primary);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 10;
-    transition: background 0.2s, color 0.2s, left 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-.hide-members-btn:hover {
-    background: var(--accent-color);
-    color: #fff;
+/* --- Toggle Members Sidebar Functionality --- */
+.app.members-sidebar-hidden .members-sidebar {
+    width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-left-width: 0;
 }
 
-.show-members-btn {
-    position: fixed;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 32px;
-    height: 48px;
-    background: var(--bg-secondary);
-    border: none;
-    border-radius: 8px 0 0 8px;
-    color: var(--text-primary);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 1002;
-    transition: background 0.2s, color 0.2s, right 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-.show-members-btn:hover {
-    background: var(--accent-color);
-    color: #fff;
+#toggleMembersBtn {
+    transition: all 0.2s ease;
 }
 
-.members-sidebar {
-    transition: width 0.35s cubic-bezier(0.4,0,0.2,1), right 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s;
-    position: relative;
-    z-index: 1001;
-}
-.members-sidebar.collapsed {
-    width: 0 !important;
-    min-width: 0 !important;
-    opacity: 0;
-    padding: 0;
-    border: none;
-    overflow: hidden;
-}
-
-.content-area {
-    transition: margin-right 0.35s cubic-bezier(0.4,0,0.2,1), width 0.35s cubic-bezier(0.4,0,0.2,1);
-}
-.content-area.expanded {
-    margin-right: 0 !important;
-    width: calc(100vw - var(--sidebar-width) - 240px) !important;
-}
-
-@media (max-width: 900px) {
-    .members-sidebar {
-        width: 180px;
-    }
-    .members-sidebar.collapsed {
-        width: 0 !important;
-    }
+#toggleMembersBtn.active {
+    background-color: var(--accent-color);
+    color: white;
 }
