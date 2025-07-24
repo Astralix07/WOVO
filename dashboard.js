@@ -3259,6 +3259,7 @@ function renderGroupMessage(msg, isNew = false) {
     // Add message actions for owner and reply for all
     const messageActions = `
         <div class="message-actions">
+            <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
             <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
             ${isOwner ? `
                 <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
@@ -3296,13 +3297,13 @@ function renderGroupMessage(msg, isNew = false) {
         ${messageActions}
     `;
 
-    // Add reactions container
+    // Add reactions container and append both to the DOM
     const reactionsContainer = document.createElement('div');
     reactionsContainer.className = 'message-reactions-container';
     reactionsContainer.dataset.messageId = msg.id;
-    msgDiv.insertAdjacentElement('afterend', reactionsContainer);
     
     groupMessages.appendChild(msgDiv);
+    groupMessages.appendChild(reactionsContainer);
 
     // Render existing reactions
     renderReactions(msg.id, reactionsContainer);
@@ -3418,8 +3419,23 @@ async function enterGroupChat(groupId) {
 
 // Send message
 if (groupMessageForm) {
-  groupMessageForm.addEventListener('submit', async (e) => {
+  groupMessageForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    sendMessage();
+  });
+
+  sendGroupMessageBtn.addEventListener('click', sendMessage);
+  
+  groupMessageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+      }
+  });
+}
+
+// Function to send a message
+async function sendMessage() {
     const content = groupMessageInput.value.trim();
     if (!content) return;
     const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
@@ -3444,7 +3460,6 @@ if (groupMessageForm) {
         }
         currentReplyTo = null;
     }
-  });
 }
 
 // --- Hook into group selection ---
@@ -3482,72 +3497,59 @@ async function deleteMessage(messageId) {
 // Add event listener for message actions
 document.addEventListener('click', (e) => {
     const deleteBtn = e.target.closest('.action-btn-icon.delete');
+    const editBtn = e.target.closest('.action-btn-icon.edit');
+    const replyBtn = e.target.closest('.action-btn-icon.reply');
+    const addReactionBtn = e.target.closest('.action-btn-icon.add-reaction');
+    const reactionBtn = e.target.closest('.reaction');
+
     if (deleteBtn) {
         const messageElement = deleteBtn.closest('.group-message');
         if (messageElement) {
             const messageId = messageElement.dataset.messageId;
             deleteMessage(messageId);
         }
-    } else if (e.target.closest('.action-btn-icon.edit')) {
-        const messageElement = e.target.closest('.group-message');
+        return;
+    }
+    
+    if (editBtn) {
+        const messageElement = editBtn.closest('.group-message');
         if (messageElement) {
             startEditing(messageElement);
         }
-    } else if (e.target.closest('.action-btn-icon.reply')) {
-        const messageElement = e.target.closest('.group-message');
+        return;
+    }
+    
+    if (replyBtn) {
+        const messageElement = replyBtn.closest('.group-message');
         if (messageElement) {
             setupReply(messageElement);
         }
+        return;
+    }
+
+    if (addReactionBtn) {
+        const messageElement = addReactionBtn.closest('.group-message');
+        currentMessageForReaction = messageElement.dataset.messageId;
+        const rect = addReactionBtn.getBoundingClientRect();
+        // Position picker above and to the left of the button
+        emojiPickerContainer.style.top = `${rect.top + window.scrollY - 350}px`;
+        emojiPickerContainer.style.left = `${rect.left + window.scrollX - 300}px`;
+        emojiPickerContainer.style.display = 'block';
+        return;
+    }
+
+    if (reactionBtn) {
+        const messageId = reactionBtn.closest('.message-reactions-container').dataset.messageId;
+        const emoji = reactionBtn.dataset.emoji;
+        toggleReaction(messageId, emoji);
+        return;
+    }
+
+    // Hide picker if clicking outside
+    if (emojiPickerContainer && !emojiPickerContainer.contains(e.target)) {
+        emojiPickerContainer.style.display = 'none';
     }
 });
-
-function formatTimestamp(ts) {
-    if (!ts) return '';
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// Function to start editing a message
-function startEditing(messageElement) {
-    const messageTextElement = messageElement.querySelector('.group-message-text');
-    const originalText = messageTextElement.textContent;
-
-    messageTextElement.innerHTML = `
-        <textarea class="edit-message-input">${originalText}</textarea>
-        <div class="edit-message-actions">
-            <button class="save-edit">Save</button>
-            <button class="cancel-edit">Cancel</button>
-        </div>
-    `;
-
-    const saveBtn = messageElement.querySelector('.save-edit');
-    const cancelBtn = messageElement.querySelector('.cancel-edit');
-    const editInput = messageElement.querySelector('.edit-message-input');
-
-    saveBtn.onclick = () => {
-        const newContent = editInput.value;
-        if (newContent.trim() && newContent !== originalText) {
-            editMessage(messageElement.dataset.messageId, newContent);
-        }
-        messageTextElement.innerHTML = escapeHtml(newContent); // Revert to text
-    };
-
-    cancelBtn.onclick = () => {
-        messageTextElement.innerHTML = escapeHtml(originalText); // Revert to original text
-    };
-}
-
-// Function to edit a message
-async function editMessage(messageId, newContent) {
-    const { error } = await supabase
-        .from('group_messages')
-        .update({ content: newContent, is_edited: true })
-        .eq('id', messageId);
-
-    if (error) {
-        showNotification('Failed to edit message', 'error');
-    }
-}
 
 let currentReplyTo = null;
 
@@ -3618,6 +3620,18 @@ function startEditing(messageElement) {
     };
 }
 
+// Function to edit a message
+async function editMessage(messageId, newContent) {
+    const { error } = await supabase
+        .from('group_messages')
+        .update({ content: newContent, is_edited: true })
+        .eq('id', messageId);
+
+    if (error) {
+        showNotification('Failed to edit message', 'error');
+    }
+}
+
 // Function to render reactions for a message
 async function renderReactions(messageId, container) {
     if (!container) {
@@ -3653,12 +3667,6 @@ async function renderReactions(messageId, container) {
         reactionEl.innerHTML = `<span class="emoji">${emoji}</span><span class="count">${userIds.length}</span>`;
         container.appendChild(reactionEl);
     }
-
-    // Add the "add reaction" button
-    const addBtn = document.createElement('button');
-    addBtn.className = 'add-reaction-btn';
-    addBtn.innerHTML = '<i class="fas fa-smile-plus"></i>';
-    container.appendChild(addBtn);
 }
 
 // --- EMOJI REACTIONS LOGIC ---

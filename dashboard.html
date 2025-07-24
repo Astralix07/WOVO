@@ -311,8 +311,10 @@
                             <span>This is the start of messaging in this group.</span>
                         </div>
                         <form class="group-message-form" id="groupMessageForm" autocomplete="off">
-                            <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
-                            <button type="submit" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
+                            <div class="message-input-container">
+                                <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
+                                <button type="button" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
+                            </div>
                         </form>
                     </div>
                     <!-- Friends, Tournaments, and Rooms content remain as separate sections, not shown when in group chat -->

@@ -306,12 +306,18 @@
     background: var(--bg-tertiary);
     padding: 8px 12px;
     border-radius: 8px 8px 0 0;
-    margin: -24px -32px 12px -32px;
+    margin: 0; /* Remove previous margin */
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
     color: var(--text-secondary);
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    width: calc(100% - 64px); /* Match padding of form */
+    margin-left: 32px;
 }
 
 .reply-preview-content span {
@@ -329,6 +335,11 @@
     color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
+}
+
+.message-input-container {
+    position: relative;
+    width: 100%;
 }
 
 /* Emoji Reactions */
@@ -369,22 +380,6 @@
     color: var(--text-secondary);
 }
 
-.add-reaction-btn {
-    background: var(--bg-hover);
-    border: 1px solid transparent;
-    border-radius: 12px;
-    padding: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    color: var(--text-muted);
-    transition: all 0.2s;
-}
-
-.add-reaction-btn:hover {
-    background: var(--bg-active);
-    color: var(--text-primary);
-}
-
 /* Responsive adjustments */
 @media (max-width: 600px) {
   .group-message {
@@ -394,5 +389,9 @@
   .group-message-avatar {
     width: 32px;
     height: 32px;
+  }
+  .reply-preview {
+    width: calc(100% - 16px);
+    margin-left: 8px;
   }
 } 
