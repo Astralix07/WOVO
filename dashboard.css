@@ -3737,3 +3737,40 @@ html, body, .app {
 .leave-btn:hover i {
   color: #fff;
 }
+
+.toggle-members-sidebar-btn {
+  position: absolute;
+  top: 50%;
+  right: 270px;
+  z-index: 100;
+  background: var(--bg-secondary);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: background 0.2s, right 0.4s cubic-bezier(0.15, 1, 0.3, 1);
+}
+.toggle-members-sidebar-btn:hover {
+  background: var(--bg-hover);
+}
+
+.members-sidebar {
+  transition: transform 0.4s cubic-bezier(0.15, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.15, 1, 0.3, 1);
+  transform: translateX(0);
+  opacity: 1;
+}
+.members-sidebar.hidden {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Move toggle button when sidebar is hidden */
+.toggle-members-sidebar-btn.sidebar-hidden {
+  right: 10px;
+}

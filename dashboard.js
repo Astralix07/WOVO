@@ -199,6 +199,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    const membersSidebar = document.querySelector('.members-sidebar');
+    const toggleMembersSidebarBtn = document.getElementById('toggleMembersSidebarBtn');
+    if (toggleMembersSidebarBtn && membersSidebar) {
+        toggleMembersSidebarBtn.addEventListener('click', () => {
+            membersSidebar.classList.toggle('hidden');
+            toggleMembersSidebarBtn.classList.toggle('sidebar-hidden', membersSidebar.classList.contains('hidden'));
+        });
+    }
 });
 
 // Sidebar Toggle
