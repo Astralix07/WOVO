@@ -132,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if(tempElement) tempElement.remove();
                     });
                 } else {
-                    showNotification('Upload failed. Please try again.', 'error');
+                    const errorData = JSON.parse(xhr.responseText);
+                    console.error('Cloudinary upload failed:', errorData);
+                    showNotification(`Upload failed: ${errorData.error.message}`, 'error');
                     if(tempElement) tempElement.remove(); // Clean up on error
                 }
             };
