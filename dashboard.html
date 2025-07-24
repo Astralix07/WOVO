@@ -309,7 +309,8 @@
                         </div>
                         <form class="group-message-form" id="groupMessageForm" autocomplete="off">
                             <div class="message-input-container">
-                            <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
+                                <button type="button" id="addAttachmentBtn"><i class="fas fa-plus-circle"></i></button>
+                                <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
                                 <button type="button" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
                             </div>
                         </form>
@@ -732,6 +733,27 @@
         <button class="add-friend-btn" id="addFriendBtn" title="Add Friend"><i class="fas fa-user-plus"></i></button>
         <button class="close-user-profile-modal" id="closeUserProfileModal"><i class="fas fa-times"></i></button>
       </div>
+    </div>
+
+    <!-- Media Upload Modal -->
+    <div class="media-upload-modal" id="mediaUploadModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Upload File</h3>
+                <button class="close-modal-btn" id="closeMediaUploadModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-preview-container" id="filePreviewContainer">
+                    <!-- File preview will be generated here -->
+                </div>
+                <input type="file" id="mediaFileInput" style="display: none;" accept="image/*,video/*">
+                <textarea id="mediaCaptionInput" placeholder="Add a caption..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" id="cancelMediaUpload">Cancel</button>
+                <button class="upload-btn" id="sendMediaBtn">Send</button>
+            </div>
+        </div>
     </div>
 
     <!-- Emoji Picker Container (hidden by default) -->

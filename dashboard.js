@@ -3304,6 +3304,18 @@ function renderGroupMessage(msg, isNew = false) {
         ${messageActions}
     `;
 
+    // Add media if it exists
+    if (msg.media_url) {
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'group-message-media';
+        if (msg.media_type === 'image') {
+            mediaContainer.innerHTML = `<img src="${msg.media_url}" alt="Shared image" loading="lazy">`;
+        } else if (msg.media_type === 'video') {
+            mediaContainer.innerHTML = `<video src="${msg.media_url}" controls></video>`;
+        }
+        msgDiv.querySelector('.group-message-content').appendChild(mediaContainer);
+    }
+
     // Add reactions container and append both to the DOM
     const reactionsContainer = document.createElement('div');
     reactionsContainer.className = 'message-reactions-container';

@@ -119,7 +119,9 @@ io.on('connection', (socket) => {
         group_id: msg.groupId, 
         user_id: msg.user_id, 
         content: msg.content,
-        reply_to_message_id: msg.reply_to_message_id
+        reply_to_message_id: msg.reply_to_message_id,
+        media_url: msg.media_url,
+        media_type: msg.media_type
       }]);
 
     if (error) {
