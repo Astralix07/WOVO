@@ -730,6 +730,11 @@
       </div>
     </div>
 
+    <!-- Emoji Picker Container (hidden by default) -->
+    <div class="emoji-picker-container" style="display: none; position: absolute; z-index: 100;">
+        <emoji-picker class="light"></emoji-picker>
+    </div>
+
     <!-- Image Cropping Modal -->
     <div class="crop-modal" style="display: none;">
         <div class="crop-container">
@@ -1139,6 +1144,7 @@
       </div>
     </div>
 
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

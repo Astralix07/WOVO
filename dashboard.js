@@ -3295,7 +3295,17 @@ function renderGroupMessage(msg, isNew = false) {
         </div>
         ${messageActions}
     `;
+
+    // Add reactions container
+    const reactionsContainer = document.createElement('div');
+    reactionsContainer.className = 'message-reactions-container';
+    reactionsContainer.dataset.messageId = msg.id;
+    msgDiv.insertAdjacentElement('afterend', reactionsContainer);
+    
     groupMessages.appendChild(msgDiv);
+
+    // Render existing reactions
+    renderReactions(msg.id, reactionsContainer);
 }
 
 function formatTimestamp(ts) {
@@ -3386,6 +3396,21 @@ async function enterGroupChat(groupId) {
         }
     })
     .subscribe();
+
+  // Add a separate subscription for reactions
+  supabase.channel(`message_reactions_${groupId}`)
+    .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'message_reactions',
+        filter: `group_id=eq.${groupId}`
+    }, (payload) => {
+        const messageId = payload.new?.message_id || payload.old?.message_id;
+        if (messageId) {
+            renderReactions(messageId);
+        }
+    })
+    .subscribe();
 }
 
 // Listen for incoming group messages
@@ -3393,15 +3418,15 @@ async function enterGroupChat(groupId) {
 
 // Send message
 if (groupMessageForm) {
-  groupMessageForm.addEventListener('submit', (e) => {
+  groupMessageForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const content = groupMessageInput.value.trim();
     if (!content) return;
     const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
     if (!currentUser || !joinedGroupRoom) return;
     
-    // Check if we are scrolled to the bottom before sending
-    const isScrolledToBottom = groupMessages.scrollHeight - groupMessages.clientHeight <= groupMessages.scrollTop + 1;
+    // Clear the input field immediately
+    groupMessageInput.value = '';
 
     // Send to server via Socket.IO
     socket.emit('group_message_send', { 
@@ -3411,10 +3436,6 @@ if (groupMessageForm) {
         reply_to_message_id: currentReplyTo ? currentReplyTo.id : null
     });
 
-    // Clear the input field immediately
-    groupMessageInput.value = '';
-    groupMessageInput.focus();
-
     // Clear reply state
     if (currentReplyTo) {
         const replyPreview = document.querySelector('.reply-preview');
@@ -3422,13 +3443,6 @@ if (groupMessageForm) {
             replyPreview.remove();
         }
         currentReplyTo = null;
-    }
-
-    // Keep scroll at bottom if it was there before sending
-    if (isScrolledToBottom) {
-        setTimeout(() => {
-            groupMessages.scrollTop = groupMessages.scrollHeight;
-        }, 50); // Small delay to allow message to start rendering
     }
   });
 }
@@ -3602,4 +3616,100 @@ function startEditing(messageElement) {
     cancelBtn.onclick = () => {
         messageTextElement.innerHTML = escapeHtml(originalText); // Revert to original text
     };
+}
+
+// Function to render reactions for a message
+async function renderReactions(messageId, container) {
+    if (!container) {
+        container = document.querySelector(`.message-reactions-container[data-message-id="${messageId}"]`);
+    }
+    if (!container) return;
+
+    const { data: reactions, error } = await supabase
+        .from('message_reactions')
+        .select('emoji, user_id')
+        .eq('message_id', messageId);
+    
+    if (error) return;
+
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+
+    // Group reactions by emoji
+    const grouped = reactions.reduce((acc, r) => {
+        acc[r.emoji] = acc[r.emoji] || [];
+        acc[r.emoji].push(r.user_id);
+        return acc;
+    }, {});
+
+    container.innerHTML = ''; // Clear existing
+
+    for (const [emoji, userIds] of Object.entries(grouped)) {
+        const reactionEl = document.createElement('div');
+        reactionEl.className = 'reaction';
+        if (userIds.includes(currentUser.id)) {
+            reactionEl.classList.add('reacted');
+        }
+        reactionEl.dataset.emoji = emoji;
+        reactionEl.innerHTML = `<span class="emoji">${emoji}</span><span class="count">${userIds.length}</span>`;
+        container.appendChild(reactionEl);
+    }
+
+    // Add the "add reaction" button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-reaction-btn';
+    addBtn.innerHTML = '<i class="fas fa-smile-plus"></i>';
+    container.appendChild(addBtn);
+}
+
+// --- EMOJI REACTIONS LOGIC ---
+const emojiPicker = document.querySelector('emoji-picker');
+const emojiPickerContainer = document.querySelector('.emoji-picker-container');
+let currentMessageForReaction = null;
+
+// Show emoji picker
+document.addEventListener('click', e => {
+    const addBtn = e.target.closest('.add-reaction-btn');
+    if (addBtn) {
+        currentMessageForReaction = addBtn.closest('.message-reactions-container').dataset.messageId;
+        const rect = addBtn.getBoundingClientRect();
+        emojiPickerContainer.style.top = `${rect.bottom + window.scrollY}px`;
+        emojiPickerContainer.style.left = `${rect.left + window.scrollX}px`;
+        emojiPickerContainer.style.display = 'block';
+        return;
+    }
+    // Hide picker if clicking outside
+    if (!emojiPickerContainer.contains(e.target)) {
+        emojiPickerContainer.style.display = 'none';
+    }
+});
+
+// Handle emoji selection
+emojiPicker.addEventListener('emoji-click', async e => {
+    if (!currentMessageForReaction) return;
+    const emoji = e.detail.unicode;
+    await toggleReaction(currentMessageForReaction, emoji);
+    emojiPickerContainer.style.display = 'none';
+});
+
+// Toggle reaction
+async function toggleReaction(messageId, emoji) {
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+    const { data: existing } = await supabase
+        .from('message_reactions')
+        .select('id')
+        .eq('message_id', messageId)
+        .eq('user_id', currentUser.id)
+        .eq('emoji', emoji)
+        .single();
+    
+    if (existing) { // Remove reaction
+        await supabase.from('message_reactions').delete().eq('id', existing.id);
+    } else { // Add reaction
+        await supabase.from('message_reactions').insert({
+            message_id: messageId,
+            user_id: currentUser.id,
+            group_id: joinedGroupRoom,
+            emoji
+        });
+    }
 }

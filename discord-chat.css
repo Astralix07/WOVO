@@ -235,25 +235,14 @@
 .reply-context::before {
     content: '';
     position: absolute;
-    left: -12px;
-    top: 4px;
-    bottom: -4px;
-    width: 2px;
-    background: var(--text-muted);
-    opacity: 0.5;
-}
-
-.reply-context::after {
-    content: '';
-    position: absolute;
-    left: -12px;
-    bottom: -4px;
-    width: 8px;
-    height: 8px;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
     border-left: 2px solid var(--text-muted);
     border-bottom: 2px solid var(--text-muted);
-    border-bottom-left-radius: 6px;
-    opacity: 0.5;
+    border-bottom-left-radius: 4px;
 }
 
 .reply-context img {
@@ -340,6 +329,60 @@
     color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
+}
+
+/* Emoji Reactions */
+.message-reactions-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 0 0 52px;
+}
+
+.reaction {
+    display: flex;
+    align-items: center;
+    background: var(--bg-hover);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.reaction:hover {
+    background: var(--bg-active);
+}
+
+.reaction.reacted {
+    background: rgba(88, 101, 242, 0.2);
+    border-color: var(--accent-color);
+}
+
+.reaction .emoji {
+    margin-right: 4px;
+}
+
+.reaction .count {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.add-reaction-btn {
+    background: var(--bg-hover);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.add-reaction-btn:hover {
+    background: var(--bg-active);
+    color: var(--text-primary);
 }
 
 /* Responsive adjustments */
