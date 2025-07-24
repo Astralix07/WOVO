@@ -3393,15 +3393,15 @@ async function enterGroupChat(groupId) {
 
 // Send message
 if (groupMessageForm) {
-  groupMessageForm.addEventListener('submit', async (e) => {
+  groupMessageForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const content = groupMessageInput.value.trim();
     if (!content) return;
     const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
     if (!currentUser || !joinedGroupRoom) return;
     
-    // Clear the input field immediately
-    groupMessageInput.value = '';
+    // Check if we are scrolled to the bottom before sending
+    const isScrolledToBottom = groupMessages.scrollHeight - groupMessages.clientHeight <= groupMessages.scrollTop + 1;
 
     // Send to server via Socket.IO
     socket.emit('group_message_send', { 
@@ -3411,6 +3411,10 @@ if (groupMessageForm) {
         reply_to_message_id: currentReplyTo ? currentReplyTo.id : null
     });
 
+    // Clear the input field immediately
+    groupMessageInput.value = '';
+    groupMessageInput.focus();
+
     // Clear reply state
     if (currentReplyTo) {
         const replyPreview = document.querySelector('.reply-preview');
@@ -3418,6 +3422,13 @@ if (groupMessageForm) {
             replyPreview.remove();
         }
         currentReplyTo = null;
+    }
+
+    // Keep scroll at bottom if it was there before sending
+    if (isScrolledToBottom) {
+        setTimeout(() => {
+            groupMessages.scrollTop = groupMessages.scrollHeight;
+        }, 50); // Small delay to allow message to start rendering
     }
   });
 }
