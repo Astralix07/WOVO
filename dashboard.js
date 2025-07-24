@@ -15,6 +15,9 @@ const html = document.documentElement;
 // Initialize theme from localStorage
 const savedTheme = localStorage.getItem('theme') || 'dark';
 html.setAttribute('data-theme', savedTheme);
+if (emojiPicker) {
+    emojiPicker.className = savedTheme;
+}
 updateThemeIcon(savedTheme);
 
 // Initialize all DOM elements and event listeners when document is ready
@@ -239,6 +242,9 @@ themeToggle.addEventListener('click', () => {
     
     html.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
+    if (emojiPicker) {
+        emojiPicker.className = newTheme;
+    }
     updateThemeIcon(newTheme);
     
     // Update theme toggle label
@@ -3529,11 +3535,31 @@ document.addEventListener('click', (e) => {
 
     if (addReactionBtn) {
         const messageElement = addReactionBtn.closest('.group-message');
+        if (!messageElement) return;
+
         currentMessageForReaction = messageElement.dataset.messageId;
         const rect = addReactionBtn.getBoundingClientRect();
-        // Position picker above and to the left of the button
-        emojiPickerContainer.style.top = `${rect.top + window.scrollY - 350}px`;
-        emojiPickerContainer.style.left = `${rect.left + window.scrollX - 300}px`;
+        
+        // Approx. picker dimensions
+        const pickerHeight = 420; 
+        const pickerWidth = 350;
+
+        let top = rect.top + window.scrollY - pickerHeight - 5;
+        let left = rect.right + window.scrollX - pickerWidth;
+
+        // Adjust if it would go off-screen
+        if (top < window.scrollY) {
+            top = rect.bottom + window.scrollY + 5;
+        }
+        if (left < 0) {
+            left = 5;
+        }
+        if (left + pickerWidth > window.innerWidth) {
+            left = window.innerWidth - pickerWidth - 5;
+        }
+
+        emojiPickerContainer.style.top = `${top}px`;
+        emojiPickerContainer.style.left = `${left}px`;
         emojiPickerContainer.style.display = 'block';
         return;
     }

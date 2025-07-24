@@ -338,6 +338,13 @@
     line-height: 1;
 }
 
+.emoji-picker-container {
+    z-index: 1000 !important;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
 .message-input-container {
     position: relative;
     width: 100%;
