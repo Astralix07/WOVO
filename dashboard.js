@@ -200,36 +200,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const membersSidebar = document.getElementById('membersSidebar');
-    const toggleMembersSidebar = document.getElementById('toggleMembersSidebar');
-    const contentArea = document.querySelector('.content-area');
-
-    if (toggleMembersSidebar && membersSidebar && contentArea) {
-        toggleMembersSidebar.addEventListener('click', () => {
-            const isHidden = membersSidebar.classList.toggle('hidden');
-            // Optionally, store state in localStorage
-            localStorage.setItem('membersSidebarHidden', isHidden);
-            // Change icon direction
-            const icon = toggleMembersSidebar.querySelector('i');
-            if (isHidden) {
-                toggleMembersSidebar.title = 'Show Members Sidebar';
-                icon.classList.remove('fa-chevron-right');
-                icon.classList.add('fa-chevron-left');
-            } else {
-                toggleMembersSidebar.title = 'Hide Members Sidebar';
-                icon.classList.remove('fa-chevron-left');
-                icon.classList.add('fa-chevron-right');
-            }
+    const membersSidebar = document.querySelector('.members-sidebar');
+    const toggleMembersSidebarBtn = document.querySelector('.toggle-members-sidebar');
+    // Restore sidebar state from localStorage
+    if (membersSidebar && localStorage.getItem('membersSidebarCollapsed') === 'true') {
+        membersSidebar.classList.add('collapsed');
+        if (toggleMembersSidebarBtn) toggleMembersSidebarBtn.title = 'Show Members Sidebar';
+    }
+    if (toggleMembersSidebarBtn && membersSidebar) {
+        toggleMembersSidebarBtn.addEventListener('click', () => {
+            membersSidebar.classList.toggle('collapsed');
+            const isCollapsed = membersSidebar.classList.contains('collapsed');
+            localStorage.setItem('membersSidebarCollapsed', isCollapsed);
+            toggleMembersSidebarBtn.title = isCollapsed ? 'Show Members Sidebar' : 'Hide Members Sidebar';
         });
-        // Restore state on load
-        const sidebarHidden = localStorage.getItem('membersSidebarHidden') === 'true';
-        if (sidebarHidden) {
-            membersSidebar.classList.add('hidden');
-            const icon = toggleMembersSidebar.querySelector('i');
-            toggleMembersSidebar.title = 'Show Members Sidebar';
-            icon.classList.remove('fa-chevron-right');
-            icon.classList.add('fa-chevron-left');
-        }
     }
 });
 
@@ -2610,7 +2594,7 @@ async function renderFriendsList() {
     let html = '';
     if (online.length) {
         html += `<div class="friend-category"><h4>ONLINE — ${online.length}</h4>${online.map(friend => `
-            <div class="friend-item" data-user-id="${friend.id}">
+            <div class="friend-item">
                 <div class="friend-avatar"><div class="status-indicator online"></div><img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"></div>
                 <div class="friend-info">
                     <div class="friend-name">${friend.username}</div>
@@ -2621,7 +2605,7 @@ async function renderFriendsList() {
     }
     if (offline.length) {
         html += `<div class="friend-category"><h4>OFFLINE — ${offline.length}</h4>${offline.map(friend => `
-            <div class="friend-item" data-user-id="${friend.id}">
+            <div class="friend-item">
                 <div class="friend-avatar"><div class="status-indicator offline"></div><img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"></div>
                 <div class="friend-info">
                     <div class="friend-name">${friend.username}</div>
