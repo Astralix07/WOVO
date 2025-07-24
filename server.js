@@ -14,6 +14,9 @@ const io = new Server(server, {
   }
 });
 
+// Map to track connected users: userId -> socket.id
+const connectedUsers = new Map();
+
 app.use(cors());
 app.use(express.json());
 
