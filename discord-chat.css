@@ -106,8 +106,8 @@
   padding: 24px 32px 24px 32px;
   background: var(--bg-header);
   border-top: 1px solid var(--border-color);
-  gap: 12px;
   z-index: 2;
+  position: relative;
 }
 #groupMessageInput {
   flex: 1;
@@ -304,20 +304,20 @@
 /* Reply preview above form */
 .reply-preview {
     background: var(--bg-tertiary);
-    padding: 8px 12px;
-    border-radius: 8px 8px 0 0;
-    margin: 0; /* Remove previous margin */
+    padding: 6px 12px;
+    border-radius: 6px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
     color: var(--text-secondary);
     position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    width: calc(100% - 64px); /* Match padding of form */
-    margin-left: 32px;
+    bottom: calc(100% - 12px);
+    left: 32px;
+    right: 32px;
+    width: auto;
+    z-index: 3;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
 }
 
 .reply-preview-content span {
@@ -335,11 +335,15 @@
     color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
+    line-height: 1;
 }
 
 .message-input-container {
     position: relative;
     width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 /* Emoji Reactions */
@@ -391,7 +395,7 @@
     height: 32px;
   }
   .reply-preview {
-    width: calc(100% - 16px);
-    margin-left: 8px;
+    left: 8px;
+    right: 8px;
   }
 } 
