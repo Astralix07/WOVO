@@ -77,39 +77,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelMediaUpload) cancelMediaUpload.addEventListener('click', closeModal);
 
     if (sendMediaBtn) {
-        sendMediaBtn.addEventListener('click', () => handleSendMedia());
+        sendMediaBtn.addEventListener('click', handleSendMedia);
     }
 
-    async function handleSendMedia() {
+    function handleSendMedia() {
         if (!selectedFile) return;
 
+        // Keep local references to the file and caption
+        const fileToSend = selectedFile;
         const caption = mediaCaptionInput.value.trim();
         const tempId = `temp_${Date.now()}`;
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
 
-        // 1. Show instant preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const tempMessage = {
-                id: tempId,
-                client_temp_id: tempId,
-                created_at: new Date().toISOString(),
-                content: caption,
-                users: currentUser,
-                media_url: e.target.result,
-                media_type: selectedFile.type.split('/')[0],
-                is_uploading: true
-            };
-            renderGroupMessage(tempMessage, true);
+        // 1. Show instant preview using a local URL
+        const previewUrl = URL.createObjectURL(fileToSend);
+        const tempMessage = {
+            id: tempId,
+            client_temp_id: tempId,
+            created_at: new Date().toISOString(),
+            content: caption,
+            users: currentUser,
+            media_url: previewUrl,
+            media_type: fileToSend.type.split('/')[0],
+            is_uploading: true
         };
-        reader.readAsDataURL(selectedFile);
+        renderGroupMessage(tempMessage, true);
         
+        // 2. Close the modal immediately
         closeModal();
 
+        // 3. Upload to Cloudinary with progress
         try {
-            // 2. Upload to Cloudinary with progress
             const formData = new FormData();
-            formData.append('file', selectedFile);
+            formData.append('file', fileToSend);
             formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
             const xhr = new XMLHttpRequest();
@@ -128,8 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
-                    
-                    // 3. Send final message data to server
+                    URL.revokeObjectURL(previewUrl); // Clean up the object URL
+
+                    // 4. Send final message data to server
                     const messagePayload = {
                         groupId: joinedGroupRoom,
                         user_id: currentUser.id,
@@ -139,9 +140,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         client_temp_id: tempId
                     };
                     
-                    socket.emit('group_message_send', messagePayload);
+                    socket.emit('group_message_send', messagePayload, (response) => {
+                        if (response.status === 'error') {
+                            showNotification(`Server Error: ${response.message}`, 'error');
+                            const tempMsgEl = document.querySelector(`.group-message[data-message-id="${tempId}"]`);
+                            if (tempMsgEl) tempMsgEl.remove();
+                        }
+                    });
                 } else {
-                    throw new Error('Upload failed');
+                    const data = JSON.parse(xhr.responseText);
+                    throw new Error(data.error?.message || `Upload failed with status ${xhr.status}`);
                 }
             };
 
@@ -152,10 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
             xhr.send(formData);
 
         } catch (error) {
-            showNotification('Failed to send media', 'error');
-            // Remove the temp message on failure
+            showNotification(`Upload Error: ${error.message}`, 'error');
             const tempMsgEl = document.querySelector(`.group-message[data-message-id="${tempId}"]`);
             if (tempMsgEl) tempMsgEl.remove();
+            URL.revokeObjectURL(previewUrl);
         }
     }
 }); 
