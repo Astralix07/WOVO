@@ -124,7 +124,8 @@ io.on('connection', (socket) => {
         content: msg.content || null, // Allow empty caption
         reply_to_message_id: msg.reply_to_message_id,
         media_url: msg.media_url,
-        media_type: msg.media_type
+        media_type: msg.media_type,
+        client_temp_id: msg.client_temp_id
       }]);
 
     if (error) {

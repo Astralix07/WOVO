@@ -3313,6 +3313,19 @@ function renderGroupMessage(msg, isNew = false) {
         } else if (msg.media_type === 'video') {
             mediaContainer.innerHTML = `<video src="${msg.media_url}" controls></video>`;
         }
+        
+        // Add progress bar for uploads
+        if (msg.is_uploading) {
+            mediaContainer.style.position = 'relative';
+            mediaContainer.innerHTML += `
+                <div class="upload-progress-overlay">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            `;
+        }
+
         msgDiv.querySelector('.group-message-content').appendChild(mediaContainer);
     }
 
@@ -3324,10 +3337,8 @@ function renderGroupMessage(msg, isNew = false) {
     groupMessages.appendChild(msgDiv);
     groupMessages.appendChild(reactionsContainer);
 
-    // Render existing reactions if it's not a temporary message
-    if (!msg.id.toString().startsWith('temp_')) {
-        renderReactions(msg.id, reactionsContainer);
-    }
+    // Render existing reactions
+    renderReactions(msg.id, reactionsContainer);
 }
 
 function formatTimestamp(ts) {
@@ -3394,6 +3405,25 @@ async function enterGroupChat(groupId) {
         // Handle new or edited messages
         if (payload.new) {
             const message = payload.new;
+
+            // --- THIS IS THE NEW LOGIC TO SWAP THE TEMP MESSAGE ---
+            if (message.client_temp_id) {
+                const tempEl = document.querySelector(`.group-message[data-message-id="${message.client_temp_id}"]`);
+                if (tempEl) {
+                    // Replace the temporary message with the final one
+                    tempEl.dataset.messageId = message.id; // Update the ID to the real one
+                    // Remove the progress bar
+                    const progressOverlay = tempEl.querySelector('.upload-progress-overlay');
+                    if (progressOverlay) progressOverlay.remove();
+                    // Update the image src if it was a local blob
+                    const img = tempEl.querySelector('img');
+                    if (img && img.src.startsWith('blob:')) {
+                        img.src = message.media_url;
+                    }
+                    return; // Stop further processing for this message
+                }
+            }
+            // --- END OF NEW LOGIC ---
 
             // Fetch user data if not in cache
             if (!userCache[message.user_id]) {

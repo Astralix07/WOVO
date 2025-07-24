@@ -77,18 +77,37 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelMediaUpload) cancelMediaUpload.addEventListener('click', closeModal);
 
     if (sendMediaBtn) {
-        sendMediaBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
+        sendMediaBtn.addEventListener('click', () => handleSendMedia());
+    }
 
-            const caption = mediaCaptionInput.value.trim();
-            const tempId = `temp_${Date.now()}`;
-            const objectURL = URL.createObjectURL(selectedFile);
+    async function handleSendMedia() {
+        if (!selectedFile) return;
 
-            // 1. Optimistically render the message
-            renderOptimisticMediaMessage(tempId, objectURL, selectedFile.type, caption);
-            closeModal();
+        const caption = mediaCaptionInput.value.trim();
+        const tempId = `temp_${Date.now()}`;
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
 
-            // 2. Start the upload process
+        // 1. Show instant preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const tempMessage = {
+                id: tempId,
+                client_temp_id: tempId,
+                created_at: new Date().toISOString(),
+                content: caption,
+                users: currentUser,
+                media_url: e.target.result,
+                media_type: selectedFile.type.split('/')[0],
+                is_uploading: true
+            };
+            renderGroupMessage(tempMessage, true);
+        };
+        reader.readAsDataURL(selectedFile);
+        
+        closeModal();
+
+        try {
+            // 2. Upload to Cloudinary with progress
             const formData = new FormData();
             formData.append('file', selectedFile);
             formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
@@ -96,93 +115,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, true);
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = (event.loaded / event.total) * 100;
-                    const progressBar = document.querySelector(`.media-upload-progress[data-temp-id="${tempId}"] .progress-bar`);
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    const progressBar = document.querySelector(`.group-message[data-message-id="${tempId}"] .progress-bar`);
                     if (progressBar) {
-                        progressBar.style.width = `${percentComplete}%`;
+                        progressBar.style.width = percentComplete + '%';
                     }
                 }
             };
-
-            xhr.onload = () => {
-                const tempElement = document.querySelector(`.group-message[data-message-id="${tempId}"]`);
-
-                if (xhr.status >= 200 && xhr.status < 300) {
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
                     
-                    // 3. Send final message to server
-                    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+                    // 3. Send final message data to server
                     const messagePayload = {
                         groupId: joinedGroupRoom,
                         user_id: currentUser.id,
                         content: caption,
                         media_url: data.secure_url,
-                        media_type: data.resource_type
+                        media_type: data.resource_type,
+                        client_temp_id: tempId
                     };
-
-                    socket.emit('group_message_send', messagePayload, (response) => {
-                        if (response.status === 'error') {
-                            showNotification(`Server Error: ${response.message}`, 'error');
-                            if(tempElement) tempElement.remove(); // Clean up on error
-                        }
-                        // On success, real-time will handle adding the final message,
-                        // so we just need to remove the temp one.
-                        if(tempElement) tempElement.remove();
-                    });
+                    
+                    socket.emit('group_message_send', messagePayload);
                 } else {
-                    const errorData = JSON.parse(xhr.responseText);
-                    console.error('Cloudinary upload failed:', errorData);
-                    showNotification(`Upload failed: ${errorData.error.message}`, 'error');
-                    if(tempElement) tempElement.remove(); // Clean up on error
+                    throw new Error('Upload failed');
                 }
             };
 
-            xhr.onerror = () => {
-                const tempElement = document.querySelector(`.group-message[data-message-id="${tempId}"]`);
-                showNotification('An unexpected error occurred during upload.', 'error');
-                if(tempElement) tempElement.remove();
+            xhr.onerror = function() {
+                throw new Error('Network error during upload');
             };
 
             xhr.send(formData);
-        });
-    }
-});
 
-// --- New function to render optimistic message ---
-function renderOptimisticMediaMessage(tempId, objectURL, fileType, caption) {
-    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-    
-    // Create a fake message object
-    const msg = {
-        id: tempId,
-        user_id: currentUser.id,
-        users: { // Use current user's info
-            username: currentUser.username,
-            avatar_url: currentUser.avatar_url
-        },
-        created_at: new Date().toISOString(),
-        content: caption,
-        media_url: objectURL,
-        media_type: fileType.split('/')[0] // 'image' or 'video'
-    };
-    
-    renderGroupMessage(msg, true); // Render it like a new message
-
-    // Add the progress overlay to the newly rendered message
-    const msgElement = document.querySelector(`.group-message[data-message-id="${tempId}"] .group-message-media`);
-    if (msgElement) {
-        const progressOverlay = document.createElement('div');
-        progressOverlay.className = 'media-upload-progress';
-        progressOverlay.dataset.tempId = tempId;
-        progressOverlay.innerHTML = `
-            <div class="upload-status-text">Uploading...</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar"></div>
-            </div>
-        `;
-        msgElement.style.position = 'relative';
-        msgElement.appendChild(progressOverlay);
+        } catch (error) {
+            showNotification('Failed to send media', 'error');
+            // Remove the temp message on failure
+            const tempMsgEl = document.querySelector(`.group-message[data-message-id="${tempId}"]`);
+            if (tempMsgEl) tempMsgEl.remove();
+        }
     }
-} 
+}); 
