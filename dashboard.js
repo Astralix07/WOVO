@@ -3090,8 +3090,7 @@ async function loadFriendsList() {
         <div class="friend-item" data-user-id="${friend.id}">
           <div class="friend-avatar">
             <div class="status-indicator offline"></div>
-            <img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
-          </div>
+            <img src="${friend.avatar_url || 'assets/default-avatar.png'}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"></div>
           <div class="friend-info">
             <div class="friend-name">${friend.username}</div>
             <div class="friend-status">Offline</div>
@@ -3222,22 +3221,79 @@ async function loadGroupMessages(groupId) {
   }
 }
 
-function renderGroupMessage(msg) {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'group-message';
-  msgDiv.innerHTML = `
-    <div class="group-message-avatar">
-      <img src="${msg.users?.avatar_url || 'assets/default-avatar.png'}" alt="${msg.users?.username || 'User'}">
-    </div>
-    <div class="group-message-content">
-      <div class="group-message-header">
-        <span class="group-message-username">${msg.users?.username || 'User'}</span>
-        <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
-      </div>
-      <div class="group-message-text">${escapeHtml(msg.content)}</div>
-    </div>
-  `;
-  groupMessages.appendChild(msgDiv);
+function renderGroupMessage(msg, isNew = false) {
+    const groupMessages = document.getElementById('groupMessages');
+    if (!groupMessages) return;
+
+    // Check for existing message to prevent duplicates
+    if (document.querySelector(`.group-message[data-message-id="${msg.id}"]`)) {
+        return;
+    }
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'group-message';
+    msgDiv.dataset.messageId = msg.id;
+
+    // Add animation for new messages
+    if (isNew) {
+        msgDiv.classList.add('new-message-animation');
+    }
+
+    // Handle soft-deleted messages
+    if (msg.is_deleted) {
+        msgDiv.classList.add('deleted');
+        msgDiv.innerHTML = `
+            <div class="group-message-avatar"></div>
+            <div class="group-message-content">
+                <div class="group-message-text">(message deleted)</div>
+            </div>
+        `;
+        groupMessages.appendChild(msgDiv);
+        return;
+    }
+    
+    // Get current user to check ownership
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+    const isOwner = msg.user_id === currentUser.id;
+
+    // Add message actions for owner
+    const messageActions = isOwner ? `
+        <div class="message-actions">
+            <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
+            <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+            <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+        </div>
+    ` : '';
+
+    // Handle replied messages
+    let replyContextHtml = '';
+    if (msg.reply_to_message_id && msg.reply_to) {
+        replyContextHtml = `
+            <div class="reply-context">
+                <img src="${msg.reply_to.users?.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+                <span class="reply-username">${escapeHtml(msg.reply_to.users?.username || 'User')}</span>
+                <span class="reply-text">${escapeHtml(msg.reply_to.content)}</span>
+            </div>
+        `;
+    }
+
+    // Build the final message HTML
+    msgDiv.innerHTML = `
+        <div class="group-message-avatar">
+            <img src="${msg.users?.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+        </div>
+        <div class="group-message-content">
+            ${replyContextHtml}
+            <div class="group-message-header">
+                <span class="group-message-username">${escapeHtml(msg.users?.username || 'User')}</span>
+                <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
+                ${msg.is_edited ? '<span class="message-edited-tag">(edited)</span>' : ''}
+            </div>
+            <div class="group-message-text">${escapeHtml(msg.content)}</div>
+        </div>
+        ${messageActions}
+    `;
+    groupMessages.appendChild(msgDiv);
 }
 
 function formatTimestamp(ts) {
@@ -3261,25 +3317,38 @@ function escapeHtml(unsafe) {
 
 // --- Socket.IO group chat ---
 let joinedGroupRoom = null;
+let messageSubscription = null;
 
 async function enterGroupChat(groupId) {
-  // Leave previous room
-  if (joinedGroupRoom) {
-    socket.emit('leave_group', joinedGroupRoom);
+  // Leave previous room and unsubscribe
+  if (messageSubscription) {
+    messageSubscription.unsubscribe();
+    messageSubscription = null;
   }
+  
   joinedGroupRoom = groupId;
-  socket.emit('join_group', groupId);
   groupChatContainer.style.display = 'flex';
   await loadGroupMessages(groupId);
+
+  // Set up real-time subscription for new messages
+  messageSubscription = supabase
+    .channel(`group_messages_${groupId}`)
+    .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'group_messages', 
+        filter: `group_id=eq.${groupId}` 
+    }, (payload) => {
+        if (payload.new) {
+            renderGroupMessage(payload.new, true);
+            groupMessages.scrollTop = groupMessages.scrollHeight;
+        }
+    })
+    .subscribe();
 }
 
 // Listen for incoming group messages
-socket.on('group_message', (msg) => {
-  if (msg.group_id !== joinedGroupRoom) return;
-  renderGroupMessage(msg);
-  groupChatStart.style.display = 'none';
-  groupMessages.scrollTop = groupMessages.scrollHeight;
-});
+// This is now handled by the real-time subscription in enterGroupChat
 
 // Send message
 if (groupMessageForm) {
@@ -3297,8 +3366,18 @@ if (groupMessageForm) {
     socket.emit('group_message_send', { 
         groupId: joinedGroupRoom, 
         user_id: currentUser.id, 
-        content 
+        content,
+        reply_to_message_id: currentReplyTo ? currentReplyTo.id : null
     });
+
+    // Clear reply state
+    if (currentReplyTo) {
+        const replyPreview = document.querySelector('.reply-preview');
+        if (replyPreview) {
+            replyPreview.remove();
+        }
+        currentReplyTo = null;
+    }
   });
 }
 
@@ -3318,3 +3397,150 @@ handleGroupSelection = async function(groupElement) {
     groupChatContainer.style.display = 'none';
   }
 };
+
+// Function to delete a message
+async function deleteMessage(messageId) {
+    const { error } = await supabase
+        .from('group_messages')
+        .update({ is_deleted: true, content: '(message deleted)' })
+        .eq('id', messageId);
+
+    if (error) {
+        showNotification('Failed to delete message', 'error');
+    }
+}
+
+// Add event listener for message actions
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.action-btn-icon.delete')) {
+        const messageElement = e.target.closest('.group-message');
+        if (messageElement) {
+            const messageId = messageElement.dataset.messageId;
+            if (confirm('Are you sure you want to delete this message?')) {
+                deleteMessage(messageId);
+            }
+        }
+    } else if (e.target.closest('.action-btn-icon.edit')) {
+        const messageElement = e.target.closest('.group-message');
+        if (messageElement) {
+            startEditing(messageElement);
+        }
+    } else if (e.target.closest('.action-btn-icon.reply')) {
+        const messageElement = e.target.closest('.group-message');
+        if (messageElement) {
+            setupReply(messageElement);
+        }
+    }
+});
+
+function formatTimestamp(ts) {
+    if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Function to start editing a message
+function startEditing(messageElement) {
+    const messageTextElement = messageElement.querySelector('.group-message-text');
+    const originalText = messageTextElement.textContent;
+
+    messageTextElement.innerHTML = `
+        <textarea class="edit-message-input">${originalText}</textarea>
+        <div class="edit-message-actions">
+            <button class="save-edit">Save</button>
+            <button class="cancel-edit">Cancel</button>
+        </div>
+    `;
+
+    const saveBtn = messageElement.querySelector('.save-edit');
+    const cancelBtn = messageElement.querySelector('.cancel-edit');
+    const editInput = messageElement.querySelector('.edit-message-input');
+
+    saveBtn.onclick = () => {
+        const newContent = editInput.value;
+        if (newContent.trim() && newContent !== originalText) {
+            editMessage(messageElement.dataset.messageId, newContent);
+        }
+        messageTextElement.innerHTML = escapeHtml(newContent); // Revert to text
+    };
+
+    cancelBtn.onclick = () => {
+        messageTextElement.innerHTML = escapeHtml(originalText); // Revert to original text
+    };
+}
+
+// Function to edit a message
+async function editMessage(messageId, newContent) {
+    const { error } = await supabase
+        .from('group_messages')
+        .update({ content: newContent, is_edited: true })
+        .eq('id', messageId);
+
+    if (error) {
+        showNotification('Failed to edit message', 'error');
+    }
+}
+
+let currentReplyTo = null;
+
+// Function to set up the reply UI
+function setupReply(messageElement) {
+    const messageId = messageElement.dataset.messageId;
+    const username = messageElement.querySelector('.group-message-username').textContent;
+    const messageText = messageElement.querySelector('.group-message-text').textContent;
+    
+    currentReplyTo = { id: messageId, username, messageText };
+
+    const replyPreview = document.createElement('div');
+    replyPreview.className = 'reply-preview';
+    replyPreview.innerHTML = `
+        <div class="reply-preview-content">
+            Replying to <strong>${escapeHtml(username)}</strong>: <span>${escapeHtml(messageText)}</span>
+        </div>
+        <button class="cancel-reply-btn">&times;</button>
+    `;
+
+    // Remove any existing preview
+    const existingPreview = document.querySelector('.reply-preview');
+    if (existingPreview) {
+        existingPreview.remove();
+    }
+    
+    groupMessageForm.prepend(replyPreview);
+    groupMessageInput.focus();
+
+    replyPreview.querySelector('.cancel-reply-btn').onclick = () => {
+        replyPreview.remove();
+        currentReplyTo = null;
+    };
+}
+
+// Function to start editing a message
+function startEditing(messageElement) {
+    const messageTextElement = messageElement.querySelector('.group-message-text');
+    const originalText = messageTextElement.textContent;
+
+    messageTextElement.innerHTML = `
+        <textarea class="edit-message-input">${originalText}</textarea>
+        <div class="edit-message-actions">
+            <button class="save-edit">Save</button>
+            <button class="cancel-edit">Cancel</button>
+        </div>
+    `;
+
+    const saveBtn = messageElement.querySelector('.save-edit');
+    const cancelBtn = messageElement.querySelector('.cancel-edit');
+    const editInput = messageElement.querySelector('.edit-message-input');
+
+    saveBtn.onclick = () => {
+        const newContent = editInput.value;
+        if (newContent.trim() && newContent !== originalText) {
+            editMessage(messageElement.dataset.messageId, newContent);
+        }
+        messageTextElement.innerHTML = escapeHtml(newContent); // Revert to text
+    };
+
+    cancelBtn.onclick = () => {
+        messageTextElement.innerHTML = escapeHtml(originalText); // Revert to original text
+    };
+}

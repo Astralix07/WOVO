@@ -37,7 +37,7 @@ app.get('/api/groups/:groupId/messages', async (req, res) => {
   const { groupId } = req.params;
   const { data, error } = await supabase
     .from('group_messages')
-    .select('*, users(username, avatar_url)')
+    .select('*, users(username, avatar_url), reply_to:reply_to_message_id(*, users(username, avatar_url))')
     .eq('group_id', groupId)
     .order('created_at', { ascending: true })
     .limit(100);
@@ -111,15 +111,20 @@ io.on('connection', (socket) => {
   socket.on('group_message_send', async (msg) => {
     // msg: { groupId, user_id, content }
     if (!msg.groupId || !msg.user_id || !msg.content) return;
-    // Save to DB
-    const { data, error } = await supabase
+    
+    // Just save to DB. Real-time will handle broadcasting.
+    const { error } = await supabase
       .from('group_messages')
-      .insert([{ group_id: msg.groupId, user_id: msg.user_id, content: msg.content }])
-      .select('*, users(username, avatar_url)')
-      .single();
-    if (error) return;
-    // Broadcast to group room
-    io.to(`group_${msg.groupId}`).emit('group_message', data);
+      .insert([{ 
+        group_id: msg.groupId, 
+        user_id: msg.user_id, 
+        content: msg.content,
+        reply_to_message_id: msg.reply_to_message_id
+      }]);
+
+    if (error) {
+        console.error('Error saving message:', error);
+    }
   });
 
   socket.on('disconnect', () => {
