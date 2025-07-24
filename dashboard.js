@@ -3337,8 +3337,10 @@ function renderGroupMessage(msg, isNew = false) {
     groupMessages.appendChild(msgDiv);
     groupMessages.appendChild(reactionsContainer);
 
-    // Render existing reactions
-    renderReactions(msg.id, reactionsContainer);
+    // Render existing reactions, but only if it's not a temporary uploading message
+    if (!msg.is_uploading) {
+        renderReactions(msg.id, reactionsContainer);
+    }
 }
 
 function formatTimestamp(ts) {
