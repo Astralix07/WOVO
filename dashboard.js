@@ -2668,25 +2668,7 @@ function subscribeToFriendsRealtime() {
         .subscribe();
 }
 
-// Call this when opening friends section and on page load if friends section is active
-function setupFriendsListAutoRender() {
-    const friendsCategory = document.querySelector('.nav-item .fa-user-friends')?.closest('.nav-item');
-    if (friendsCategory) {
-        friendsCategory.addEventListener('click', () => {
-            // Show friends section
-            document.querySelectorAll('.details-section').forEach(sec => sec.classList.remove('active'));
-            document.getElementById('friends-section').classList.add('active');
-            renderFriendsList();
-        });
-    }
-    // Also render if friends section is already active on load
-    if (document.getElementById('friends-section')?.classList.contains('active')) {
-        renderFriendsList();
-    }
-    subscribeToFriendsRealtime();
-}
 
-document.addEventListener('DOMContentLoaded', setupFriendsListAutoRender);
 
 // --- SOCKET.IO CLIENT SETUP ---
 // Use io() with no URL for Render deployment (auto-detects host)

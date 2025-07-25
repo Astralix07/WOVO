@@ -1,5 +1,18 @@
 /* --- Discord-Style Group Chat --- */
 
+/* Friends List in Details Panel */
+.friend-item .group-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.friend-item .avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
 /* Header Avatar */
 .header-avatar {
     width: 32px;
