@@ -739,20 +739,26 @@ document.querySelectorAll('.nav-item:not(.theme-toggle)').forEach(item => {
         if (targetSection) {
             targetSection.classList.add('active');
 
-            const groupChatContainer = document.getElementById('groupChatContainer');
-            const placeholderContent = document.getElementById('placeholderContent');
-
-            if (sectionName.toLowerCase() === 'groups') {
-                placeholderContent.style.display = 'none';
-                groupChatContainer.style.display = 'flex';
-                // Re-select the active group to load its content
+            const section = sectionName.toLowerCase();
+            if (section === 'groups') {
+                showMainContent({ group: true });
                 const activeGroup = document.querySelector('#groups-section .group-item.active');
-                if (activeGroup) {
-                    handleGroupSelection(activeGroup);
-                }
+                if (activeGroup) handleGroupSelection(activeGroup);
+                updateHeaderInfo('Groups', null);
+            } else if (section === 'friends') {
+                showMainContent({ dm: true });
+                updateHeaderInfo('Friends', null);
+            } else if (section === 'tournaments') {
+                showMainContent({ placeholder: true });
+                updateHeaderInfo('Tournaments', 'Coming Soon');
+            } else if (section === 'custom rooms') {
+                showMainContent({ placeholder: true });
+                updateHeaderInfo('Custom Rooms', 'Coming Soon');
+            } else if (section === 'settings') {
+                showMainContent({ placeholder: true });
+                updateHeaderInfo('Settings', null);
             } else {
-                placeholderContent.style.display = 'flex';
-                groupChatContainer.style.display = 'none';
+                showMainContent({ placeholder: true });
                 updateHeaderInfo(sectionName, 'Coming Soon');
             }
         }
@@ -3574,7 +3580,9 @@ let currentReplyTo = null;
 function setupReply(messageElement) {
     const messageId = messageElement.dataset.messageId;
     const username = messageElement.querySelector('.group-message-username').textContent;
-    let messageText = messageElement.querySelector('.group-message-text').textContent;
+    // SAFER: handle null for text content
+    const textEl = messageElement.querySelector('.group-message-text, .message-heading');
+    let messageText = textEl ? textEl.textContent : '';
 
     // Truncate long messages
     if (messageText.length > 50) {
@@ -3745,4 +3753,11 @@ function formatMessageContent(content) {
     return escapeHtml(content).replace(mentionRegex, (match, username, userId) => {
         return `<span class="mention-highlight" data-user-id="${escapeHtml(userId)}">@${escapeHtml(username)}</span>`;
     });
+}
+
+// --- Robust Content Switching ---
+function showMainContent({ group = false, dm = false, placeholder = false }) {
+    if (groupChatContainer) groupChatContainer.style.display = group ? 'flex' : 'none';
+    if (dmChatContainer) dmChatContainer.style.display = dm ? 'flex' : 'none';
+    if (placeholderContent) placeholderContent.style.display = placeholder ? 'flex' : 'none';
 }

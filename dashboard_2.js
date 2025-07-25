@@ -690,13 +690,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const friendId = friends[0].user_id_1 === currentUser.id ? friends[0].user_id_2 : friends[0].user_id_1;
                 const { data: friendData } = await supabase.from('users').select('*').eq('id', friendId).single();
                 if (friendData) {
+                    showMainContent({ dm: true });
                     enterDmChat(friendData);
                 }
             } else {
-                // Show placeholder if no friends
-                placeholderContent.style.display = 'flex';
-                dmChatContainer.style.display = 'none';
-                groupChatContainer.style.display = 'none';
+                showMainContent({ placeholder: true });
                 updateHeaderInfo('Friends', 'No friends yet');
             }
         });
