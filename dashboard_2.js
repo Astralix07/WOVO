@@ -281,31 +281,62 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDmSubscription = null;
     let currentDmFriend = null;
 
+    // --- FRIEND SWITCHING LOGIC ---
+    function setupFriendsListForDMs() {
+        const friendItems = document.querySelectorAll('.friend-item');
+        friendItems.forEach(item => {
+            item.onclick = async () => {
+                // Remove active class from all
+                friendItems.forEach(f => f.classList.remove('active'));
+                item.classList.add('active');
+                const username = item.querySelector('.friend-name').textContent;
+                const { data: friendData } = await supabase.from('users').select('*').eq('username', username).single();
+                if (friendData) {
+                    enterDmChat(friendData);
+                }
+            };
+        });
+    }
+    document.addEventListener('DOMContentLoaded', setupFriendsListForDMs);
+    document.addEventListener('friendsListUpdated', setupFriendsListForDMs);
+
     async function enterDmChat(friend) {
         if (!friend) return;
         currentDmFriend = friend;
-
-        // Update UI
         updateHeaderInfo(friend.username, 'Direct Message');
         dmChatContainer.style.display = 'flex';
         placeholderContent.style.display = 'none';
         groupChatContainer.style.display = 'none';
-
-        // Load messages
-        await loadDms(friend.id);
-
-        // Subscribe to new DMs
+        // Unsubscribe from previous
         if (currentDmSubscription) {
             currentDmSubscription.unsubscribe();
+            currentDmSubscription = null;
         }
+        // Show skeleton loader
+        let loaderHTML = '';
+        for (let i = 0; i < 5; i++) {
+            loaderHTML += `
+                <div class="skeleton-message">
+                    <div class="skeleton-avatar"></div>
+                    <div class="skeleton-content">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                    </div>
+                </div>
+            `;
+        }
+        dmMessages.innerHTML = loaderHTML;
+        // Load messages
+        await loadDms(friend.id);
+        // Subscribe to new DMs
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
         currentDmSubscription = supabase
             .channel(`dms_${currentUser.id}_${friend.id}`)
             .on('postgres_changes', {
-                event: 'INSERT',
+                event: '*',
                 schema: 'public',
                 table: 'direct_messages',
-                filter: `receiver_id=eq.${currentUser.id}`
+                filter: `or(and(sender_id.eq.${currentUser.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${currentUser.id}))`
             }, payload => {
                 renderDm(payload.new);
             })
@@ -328,22 +359,76 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderDm(msg) {
+    function renderDm(msg, isNew = false) {
         const msgDiv = document.createElement('div');
-        msgDiv.className = 'group-message'; // Re-use styling
+        msgDiv.className = 'dm-message group-message'; // Re-use styling
+        msgDiv.dataset.messageId = msg.id;
+        if (isNew) msgDiv.classList.add('new-message-animation');
+
+        // Build reply context if present
+        let replyContextHtml = '';
+        if (msg.reply_to && msg.reply_to.sender) {
+            replyContextHtml = `
+                <div class="reply-context">
+                    <img src="${msg.reply_to.sender.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+                    <span class="reply-username">${escapeHtml(msg.reply_to.sender.username)}</span>
+                    <span class="reply-text">${escapeHtml(msg.reply_to.content)}</span>
+                </div>
+            `;
+        }
+
+        // Message actions (reply, edit, delete, react)
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+        const isOwner = msg.sender_id === currentUser.id;
+        const messageActions = `
+            <div class="message-actions">
+                <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
+                <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
+                ${isOwner ? `
+                    <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                ` : ''}
+            </div>
+        `;
+
+        // Headings
+        let contentHtml = '';
+        if (msg.content) {
+            if (msg.content.startsWith('# ')) {
+                contentHtml = `<h1 class="message-heading">${formatMessageContent(msg.content.substring(2))}</h1>`;
+            } else {
+                contentHtml = `<div class="group-message-text">${formatMessageContent(msg.content)}</div>`;
+            }
+        }
+
+        // Media
+        let mediaHtml = '';
+        if (msg.media_url) {
+            if (msg.media_type === 'image') {
+                mediaHtml = `<div class="group-message-media"><img src="${msg.media_url}" alt="Shared image" loading="lazy"></div>`;
+            } else if (msg.media_type === 'video') {
+                mediaHtml = `<div class="group-message-media"><video src="${msg.media_url}" controls></video></div>`;
+            }
+        }
+
         msgDiv.innerHTML = `
             <div class="group-message-avatar">
                 <img src="${msg.sender.avatar_url || DEFAULT_AVATAR}" alt="avatar">
             </div>
             <div class="group-message-content">
+                ${replyContextHtml}
                 <div class="group-message-header">
-                    <span class="group-message-username">${msg.sender.username}</span>
+                    <span class="group-message-username">${escapeHtml(msg.sender.username)}</span>
                     <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
+                    ${msg.is_edited ? '<span class="message-edited-tag">(edited)</span>' : ''}
                 </div>
-                <div class="group-message-text">${escapeHtml(msg.content)}</div>
+                ${contentHtml}
+                ${mediaHtml}
             </div>
+            ${messageActions}
         `;
         dmMessages.appendChild(msgDiv);
+        // TODO: Add reactions rendering and event listeners for actions
     }
 
     if (sendDmMessageBtn) {
@@ -358,23 +443,210 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- DM REACTIONS LOGIC ---
+    async function renderDmReactions(messageId, container) {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+        const { data: reactions, error } = await supabase
+            .from('dm_message_reactions')
+            .select('emoji, user_id')
+            .eq('message_id', messageId);
+        if (error) return;
+        // Group reactions by emoji
+        const grouped = (reactions || []).reduce((acc, r) => {
+            acc[r.emoji] = acc[r.emoji] || [];
+            acc[r.emoji].push(r.user_id);
+            return acc;
+        }, {});
+        container.innerHTML = '';
+        for (const [emoji, userIds] of Object.entries(grouped)) {
+            const reactionEl = document.createElement('div');
+            reactionEl.className = 'reaction';
+            if (userIds.includes(currentUser.id)) {
+                reactionEl.classList.add('reacted');
+            }
+            reactionEl.dataset.emoji = emoji;
+            reactionEl.innerHTML = `<span class="emoji">${emoji}</span><span class="count">${userIds.length}</span>`;
+            container.appendChild(reactionEl);
+        }
+    }
+
+    // Real-time subscription for DM reactions
+    let dmReactionsSubscription = null;
+    function subscribeDmReactions(friendId) {
+        if (dmReactionsSubscription) dmReactionsSubscription.unsubscribe();
+        dmReactionsSubscription = supabase
+            .channel(`dm_reactions_${friendId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_message_reactions' }, payload => {
+                const messageId = payload.new?.message_id || payload.old?.message_id;
+                const container = document.querySelector(`.dm-message[data-message-id="${messageId}"] .message-reactions-container`);
+                if (container) renderDmReactions(messageId, container);
+            })
+            .subscribe();
+    }
+
+    // --- DM MEDIA UPLOAD LOGIC ---
+    const addDmAttachmentBtn = document.getElementById('addDmAttachmentBtn');
+    const dmFileInput = document.createElement('input');
+    dmFileInput.type = 'file';
+    dmFileInput.accept = 'image/*,video/*';
+    let dmSelectedFile = null;
+
+    if (addDmAttachmentBtn) {
+        addDmAttachmentBtn.addEventListener('click', () => {
+            dmFileInput.click();
+        });
+    }
+    dmFileInput.addEventListener('change', handleDmFileSelect);
+
+    function handleDmFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 30 * 1024 * 1024) {
+            showNotification('File is too large (max 30MB)', 'error');
+            return;
+        }
+        dmSelectedFile = file;
+        sendDmMedia();
+    }
+
+    async function sendDmMedia() {
+        if (!dmSelectedFile || !currentDmFriend) return;
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const tempId = `temp_${Date.now()}`;
+        // 1. Show instant preview
+        const previewUrl = URL.createObjectURL(dmSelectedFile);
+        renderDm({
+            id: tempId,
+            sender: currentUser,
+            created_at: new Date().toISOString(),
+            media_url: previewUrl,
+            media_type: dmSelectedFile.type.split('/')[0],
+            is_uploading: true
+        }, true);
+        // 2. Upload to Cloudinary
+        try {
+            const formData = new FormData();
+            formData.append('file', dmSelectedFile);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, true);
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    const progressBar = document.querySelector(`.dm-message[data-message-id="${tempId}"] .progress-bar`);
+                    if (progressBar) progressBar.style.width = percentComplete + '%';
+                }
+            };
+            xhr.onload = async function() {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    URL.revokeObjectURL(previewUrl);
+                    await supabase.from('direct_messages').insert({
+                        sender_id: currentUser.id,
+                        receiver_id: currentDmFriend.id,
+                        media_url: data.secure_url,
+                        media_type: data.resource_type,
+                        client_temp_id: tempId
+                    });
+                } else {
+                    showNotification('Upload failed', 'error');
+                }
+            };
+            xhr.onerror = function() {
+                showNotification('Network error during upload', 'error');
+            };
+            xhr.send(formData);
+        } catch (error) {
+            showNotification('Failed to send media', 'error');
+        }
+    }
+
+    // --- DM MESSAGE ACTIONS (continued) ---
+    dmMessages.addEventListener('click', async (e) => {
+        const msgDiv = e.target.closest('.dm-message');
+        if (!msgDiv) return;
+        const messageId = msgDiv.dataset.messageId;
+        // Add Reaction
+        if (e.target.closest('.action-btn-icon.add-reaction')) {
+            // Show emoji picker
+            currentMessageForReaction = messageId;
+            const rect = e.target.getBoundingClientRect();
+            emojiPickerContainer.style.top = `${rect.top - 360}px`;
+            emojiPickerContainer.style.left = `${rect.left - 300}px`;
+            emojiPickerContainer.style.display = 'block';
+            emojiPickerContainer.dataset.dm = 'true';
+            return;
+        }
+        // Reaction click
+        if (e.target.closest('.reaction')) {
+            const emoji = e.target.closest('.reaction').dataset.emoji;
+            toggleDmReaction(messageId, emoji);
+            return;
+        }
+    });
+
+    // Emoji picker for DMs
+    emojiPicker.addEventListener('emoji-click', async e => {
+        if (emojiPickerContainer.dataset.dm === 'true' && currentMessageForReaction) {
+            const emoji = e.detail.unicode;
+            await toggleDmReaction(currentMessageForReaction, emoji);
+            emojiPickerContainer.style.display = 'none';
+            emojiPickerContainer.dataset.dm = '';
+        }
+    });
+
+    async function toggleDmReaction(messageId, emoji) {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+        const { data: existing } = await supabase
+            .from('dm_message_reactions')
+            .select('id')
+            .eq('message_id', messageId)
+            .eq('user_id', currentUser.id)
+            .eq('emoji', emoji)
+            .single();
+        if (existing) {
+            await supabase.from('dm_message_reactions').delete().eq('id', existing.id);
+        } else {
+            await supabase.from('dm_message_reactions').insert({
+                message_id: messageId,
+                user_id: currentUser.id,
+                emoji
+            });
+        }
+    }
+
+    // --- DM MESSAGE ACTIONS ---
+    let currentDmReplyTo = null;
+    let currentDmEditId = null;
+
+    // Send DM (with reply/edit logic)
     async function sendDm() {
         const content = dmMessageInput.value.trim();
         if (!content || !currentDmFriend) return;
-
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (currentDmEditId) {
+            await supabase.from('direct_messages').update({ content, is_edited: true }).eq('id', currentDmEditId);
+            currentDmEditId = null;
+            dmMessageInput.value = '';
+            return;
+        }
+        let reply_to_message_id = null;
+        if (currentDmReplyTo) {
+            reply_to_message_id = currentDmReplyTo;
+            currentDmReplyTo = null;
+        }
         const { error } = await supabase.from('direct_messages').insert({
             sender_id: currentUser.id,
             receiver_id: currentDmFriend.id,
-            content: content
+            content,
+            reply_to_message_id
         });
-
         if (!error) {
             renderDm({
                 sender: currentUser,
                 created_at: new Date().toISOString(),
                 content
-            });
+            }, true);
             dmMessageInput.value = '';
             dmMessages.scrollTop = dmMessages.scrollHeight;
         }
