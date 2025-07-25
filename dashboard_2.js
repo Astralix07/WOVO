@@ -292,6 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const username = item.querySelector('.friend-name').textContent;
                 const { data: friendData } = await supabase.from('users').select('*').eq('username', username).single();
                 if (friendData) {
+                    showMainContent({ dm: true });
                     enterDmChat(friendData);
                 }
             };
@@ -299,6 +300,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.addEventListener('DOMContentLoaded', setupFriendsListForDMs);
     document.addEventListener('friendsListUpdated', setupFriendsListForDMs);
+
+    // Patch renderFriendsList to always re-attach listeners
+    if (typeof renderFriendsList === 'function') {
+        const origRenderFriendsList = renderFriendsList;
+        window.renderFriendsList = async function(...args) {
+            await origRenderFriendsList.apply(this, args);
+            setupFriendsListForDMs();
+        };
+    }
 
     async function enterDmChat(friend) {
         if (!friend) return;
