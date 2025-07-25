@@ -3209,23 +3209,47 @@ let currentGroupId = null;
 let groupMessagesCache = [];
 
 async function loadGroupMessages(groupId) {
-  groupMessages.innerHTML = '';
-  groupChatStart.style.display = 'none';
-  try {
-    const res = await fetch(`/api/groups/${groupId}/messages`);
-    const messages = await res.json();
-    groupMessagesCache = Array.isArray(messages) ? messages : [];
-    if (groupMessagesCache.length === 0) {
-      groupChatStart.style.display = 'block';
-    } else {
-      groupChatStart.style.display = 'none';
-      groupMessagesCache.forEach(msg => renderGroupMessage(msg));
-      groupMessages.scrollTop = groupMessages.scrollHeight;
+    if (!groupMessages) return;
+
+    // Show skeleton loader
+    let loaderHTML = '';
+    for (let i = 0; i < 5; i++) {
+        loaderHTML += `
+            <div class="skeleton-message">
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line long"></div>
+                </div>
+            </div>
+        `;
     }
-  } catch (e) {
-    groupChatStart.style.display = 'block';
-    groupChatStart.textContent = 'Failed to load messages.';
-  }
+    groupMessages.innerHTML = loaderHTML;
+    groupChatStart.style.display = 'none';
+
+    try {
+        const { data: messages, error } = await supabase
+            .from('group_messages')
+            .select('*, users(username, avatar_url), reply_to:reply_to_message_id(*, users(username, avatar_url))')
+            .eq('group_id', groupId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        groupMessages.innerHTML = ''; // Clear the loader
+
+        if (messages.length === 0) {
+            groupChatStart.style.display = 'block';
+        } else {
+            messages.forEach(msg => renderGroupMessage(msg));
+            // Defer scroll to bottom to allow images to load
+            setTimeout(() => {
+                groupMessages.scrollTop = groupMessages.scrollHeight;
+            }, 100);
+        }
+    } catch (error) {
+        groupMessages.innerHTML = '<div class="error-state">Failed to load messages.</div>';
+    }
 }
 
 function renderGroupMessage(msg, isNew = false) {

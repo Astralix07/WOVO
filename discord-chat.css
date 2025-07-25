@@ -623,3 +623,53 @@
     right: 8px;
   }
 } 
+
+/* --- Skeleton Loader for Messages --- */
+.skeleton-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0 32px;
+    margin-top: 8px;
+    min-height: 56px;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--bg-tertiary);
+    flex-shrink: 0;
+}
+
+.skeleton-content {
+    flex: 1;
+    padding-top: 4px;
+}
+
+.skeleton-line {
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+    height: 16px;
+}
+
+.skeleton-line.short {
+    width: 40%;
+    margin-bottom: 8px;
+}
+
+.skeleton-line.long {
+    width: 80%;
+}
+
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+.skeleton-avatar, .skeleton-line {
+    background-image: linear-gradient(to right, var(--bg-tertiary) 0%, var(--bg-secondary) 20%, var(--bg-tertiary) 40%, var(--bg-tertiary) 100%);
+    background-repeat: no-repeat;
+    background-size: 2000px 104px;
+    animation: shimmer 2s linear infinite;
+} 
