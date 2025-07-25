@@ -3771,16 +3771,15 @@ async function fetchAndDisplayFriends() {
     }
 
     try {
-        // Fetch friend relationships
+        // Fetch friend relationships from the 'friends' table
         const { data: friends, error } = await supabase
             .from('friends')
             .select('user_id_1, user_id_2')
-            .or(`user_id_1.eq.${currentUser.id},user_id_2.eq.${currentUser.id}`)
-            .eq('status', 'accepted');
+            .or(`user_id_1.eq.${currentUser.id},user_id_2.eq.${currentUser.id}`);
 
         if (error) throw error;
 
-        if (friends.length === 0) {
+        if (!friends || friends.length === 0) {
             contentTitle.textContent = 'Friends';
             chatArea.innerHTML = `<div class="coming-soon-message"><h2>No Friends Yet!</h2><p>Use the 'Add Friend' button to connect with others.</p></div>`;
             return;
@@ -3788,7 +3787,7 @@ async function fetchAndDisplayFriends() {
 
         const friendIds = friends.map(f => f.user_id_1 === currentUser.id ? f.user_id_2 : f.user_id_1);
 
-        // Fetch friend user data
+        // Fetch friend user data from the 'users' table
         const { data: friendUsers, error: userError } = await supabase
             .from('users')
             .select('id, username')
@@ -3796,12 +3795,12 @@ async function fetchAndDisplayFriends() {
 
         if (userError) throw userError;
 
-        if (friendUsers.length > 0) {
+        if (friendUsers && friendUsers.length > 0) {
             const firstFriend = friendUsers[0];
             contentTitle.textContent = firstFriend.username;
             chatArea.innerHTML = `<div class="coming-soon-message"><h2>Connecting...</h2><p>WE ARE WORKING ON CONNECTING YOU AND ${firstFriend.username.toUpperCase()}. PLEASE BE PATIENT.</p></div>`;
         } else {
-             contentTitle.textContent = 'Friends';
+            contentTitle.textContent = 'Friends';
             chatArea.innerHTML = `<div class="coming-soon-message"><h2>No Friends Yet!</h2><p>Use the 'Add Friend' button to connect with others.</p></div>`;
         }
 
