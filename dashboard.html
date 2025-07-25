@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <link rel="stylesheet" href="discord-chat.css">
     <link rel="stylesheet" href="components/group-settings.css">
 </head>
@@ -21,22 +20,22 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 
-                <div class="nav-item active" data-target="groups-section">
+                <div class="nav-item active">
                     <i class="fas fa-users"></i>
                     <span class="nav-label">Groups</span>
                 </div>
                 
-                <div class="nav-item" data-target="friends-section">
+                <div class="nav-item">
                     <i class="fas fa-user-friends"></i>
                     <span class="nav-label">Friends</span>
                 </div>
                 
-                <div class="nav-item" data-target="tournaments-section">
+                <div class="nav-item">
                     <i class="fas fa-trophy"></i>
                     <span class="nav-label">Tournaments</span>
                 </div>
                 
-                <div class="nav-item" data-target="rooms-section">
+                <div class="nav-item">
                     <i class="fas fa-gamepad"></i>
                     <span class="nav-label">Custom Rooms</span>
                 </div>
@@ -153,17 +152,15 @@
             <div class="details-section" id="friends-section">
                 <header class="details-header">
                     <h3>Friends</h3>
-                    <button class="add-new-btn" id="add-friend-btn">
+                    <button class="add-new-btn">
                         <i class="fas fa-user-plus"></i>
                     </button>
                 </header>
                 
                 <div class="details-content">
-                    <div class="friends-list-controls">
-                        <button class="control-btn active" data-filter="all">All</button>
-                        <button class="control-btn" data-filter="online">Online</button>
-                        <button class="control-btn" data-filter="pending">Pending</button>
-                        <button class="control-btn" data-filter="blocked">Blocked</button>
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search friends...">
                     </div>
 
                     <div class="friends-list" id="realFriendsList">
@@ -274,24 +271,6 @@
 
         <!-- Main Content Area -->
         <main class="content-area">
-            <!-- DM Chat Section -->
-            <div class="main-content-section" id="dm-chat-section">
-                <header class="content-header" id="dm-chat-header">
-                    <!-- DM header will be populated by JS -->
-                </header>
-                <div class="content-container">
-                    <div id="dm-messages" class="chat-messages"></div>
-                    <div class="chat-footer">
-                        <div id="mentions-popup-container"></div>
-                        <emoji-picker class="light"></emoji-picker>
-                        <form id="dm-message-form" class="chat-form">
-                            <input type="text" id="dm-message-input" placeholder="Message your friend" autocomplete="off">
-                            <button type="submit"><i class="fas fa-paper-plane"></i></button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
             <!-- Default Content -->
             <div class="main-content-section active" id="default-content">
                 <header class="content-header">
@@ -1195,22 +1174,9 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="dashboard.js"></script>
-
-    <!-- Edit Message Modal -->
-    <div id="edit-message-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <h2>Edit Message</h2>
-            <textarea id="edit-message-textarea" class="modal-textarea"></textarea>
-            <div class="modal-actions">
-                <button id="cancel-edit-btn" class="btn btn-secondary">Cancel</button>
-                <button id="save-edit-btn" class="btn btn-primary">Save</button>
-            </div>
-        </div>
-    </div>
-
     <script src="dashboard_2.js"></script>
     <script src="components/group-settings.js"></script>
 </body>
-</html>
+</html> 
