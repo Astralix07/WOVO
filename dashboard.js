@@ -82,40 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Main sidebar navigation
-    const navItems = document.querySelectorAll('.sidebar-top .nav-item');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            // Remove active class from all nav items
-            navItems.forEach(i => i.classList.remove('active'));
-            // Add active class to the clicked item
-            item.classList.add('active');
-
-            const targetDetailsId = item.dataset.targetDetails;
-            const targetContentId = item.dataset.targetContent;
-
-            // Hide all detail and content sections
-            document.querySelectorAll('.details-section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.main-content-section').forEach(s => s.classList.remove('active'));
-
-            // Show the target sections
-            if (targetDetailsId) {
-                const targetDetails = document.getElementById(targetDetailsId);
-                if (targetDetails) targetDetails.classList.add('active');
-            }
-            if (targetContentId) {
-                const targetContent = document.getElementById(targetContentId);
-                if (targetContent) targetContent.classList.add('active');
-
-                if (targetContentId === 'friends-content-section') {
-                    fetchAndDisplayFriends();
-                }
-            }
-        });
-    });
-
-
     // Initialize settings categories
     if (settingsCategories.length && settingsSections.length) {
         settingsCategories.forEach(category => {
@@ -2668,7 +2634,25 @@ function subscribeToFriendsRealtime() {
         .subscribe();
 }
 
+// Call this when opening friends section and on page load if friends section is active
+function setupFriendsListAutoRender() {
+    const friendsCategory = document.querySelector('.nav-item .fa-user-friends')?.closest('.nav-item');
+    if (friendsCategory) {
+        friendsCategory.addEventListener('click', () => {
+            // Show friends section
+            document.querySelectorAll('.details-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById('friends-section').classList.add('active');
+            renderFriendsList();
+        });
+    }
+    // Also render if friends section is already active on load
+    if (document.getElementById('friends-section')?.classList.contains('active')) {
+        renderFriendsList();
+    }
+    subscribeToFriendsRealtime();
+}
 
+document.addEventListener('DOMContentLoaded', setupFriendsListAutoRender);
 
 // --- SOCKET.IO CLIENT SETUP ---
 // Use io() with no URL for Render deployment (auto-detects host)
@@ -3737,129 +3721,6 @@ async function editMessage(messageId, newContent) {
 
     if (error) {
         showNotification('Failed to edit message', 'error');
-    }
-}
-
-// Function to fetch and display friends
-async function fetchAndDisplayFriends() {
-    const friendsContent = document.getElementById('friends-content-section');
-    const contentTitle = friendsContent.querySelector('#content-title');
-    const chatArea = friendsContent.querySelector('.chat-area');
-    const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
-
-    if (!currentUser.id) {
-        chatArea.innerHTML = `<div class="coming-soon-message"><h2>Error</h2><p>Could not identify current user.</p></div>`;
-        return;
-    }
-
-    try {
-        // Fetch friend relationships from the 'friends' table
-        const { data: friends, error } = await supabase
-            .from('friends')
-            .select('user_id_1, user_id_2')
-            .or(`user_id_1.eq.${currentUser.id},user_id_2.eq.${currentUser.id}`);
-
-        if (error) throw error;
-
-        if (!friends || friends.length === 0) {
-            contentTitle.textContent = 'Friends';
-            chatArea.innerHTML = `<div class="coming-soon-message"><h2>No Friends Yet!</h2><p>Use the 'Add Friend' button to connect with others.</p></div>`;
-            return;
-        }
-
-        const friendIds = friends.map(f => f.user_id_1 === currentUser.id ? f.user_id_2 : f.user_id_1);
-
-        // Fetch friend user data from the 'users' table
-        const { data: friendUsers, error: userError } = await supabase
-            .from('users')
-            .select('id, username, avatar_url')
-            .in('id', friendIds);
-
-        if (userError) throw userError;
-
-        if (friendUsers && friendUsers.length > 0) {
-            renderFriendsList(friendUsers);
-            // Display the first friend by default
-            const firstFriend = friendUsers[0];
-            const friendsContent = document.getElementById('friends-content-section');
-            const headerAvatar = friendsContent.querySelector('.header-avatar');
-            
-            contentTitle.textContent = firstFriend.username;
-            headerAvatar.src = firstFriend.avatar_url || './assets/default-avatar.png';
-            chatArea.innerHTML = `<div class="coming-soon-message"><h2>Connecting...</h2><p>WE ARE WORKING ON CONNECTING YOU AND ${firstFriend.username.toUpperCase()}. PLEASE BE PATIENT.</p></div>`;
-        } else {
-            contentTitle.textContent = 'Friends';
-            chatArea.innerHTML = `<div class="coming-soon-message"><h2>No Friends Yet!</h2><p>Use the 'Add Friend' button to connect with others.</p></div>`;
-        }
-
-    } catch (error) {
-        console.error('Error fetching friends:', error);
-        contentTitle.textContent = 'Friends';
-        chatArea.innerHTML = `<div class="coming-soon-message"><h2>Error</h2><p>Could not load friends list. Please try again later.</p></div>`;
-    }
-}
-
-function renderFriendsList(friends) {
-    const friendsListContainer = document.getElementById('realFriendsList');
-    if (!friendsListContainer) return;
-
-    friendsListContainer.innerHTML = ''; // Clear existing list
-
-    friends.forEach(friend => {
-        const friendItem = document.createElement('div');
-        friendItem.className = 'friend-item group-item'; // Re-use group-item styling
-        friendItem.dataset.friendId = friend.id;
-        friendItem.dataset.friendName = friend.username;
-        friendItem.dataset.friendAvatar = friend.avatar_url || './assets/default-avatar.png';
-
-        friendItem.innerHTML = `
-            <div class="group-icon">
-                <img src="${friend.avatar_url || './assets/default-avatar.png'}" alt="${friend.username}" class="avatar">
-            </div>
-            <div class="group-info">
-                <div class="group-name">${friend.username}</div>
-            </div>
-        `;
-
-        friendsListContainer.appendChild(friendItem);
-    });
-
-    // Add click listeners
-    const friendItems = friendsListContainer.querySelectorAll('.friend-item');
-    friendItems.forEach(item => {
-        item.addEventListener('click', () => {
-            // Remove active class from all friend items
-            friendItems.forEach(i => i.classList.remove('active'));
-            // Add active class to clicked item
-            item.classList.add('active');
-
-            const friendName = item.dataset.friendName;
-            const friendAvatar = item.dataset.friendAvatar;
-            const friendsContent = document.getElementById('friends-content-section');
-            const contentTitle = friendsContent.querySelector('#content-title');
-            const headerAvatar = friendsContent.querySelector('.header-avatar');
-            const chatArea = friendsContent.querySelector('.chat-area');
-
-            contentTitle.textContent = friendName;
-            headerAvatar.src = friendAvatar;
-            // Dispatch a custom event with friend details
-            const friendSelectedEvent = new CustomEvent('friendSelected', {
-                detail: {
-                    id: item.dataset.friendId,
-                    username: friendName,
-                    avatar_url: friendAvatar
-                }
-            });
-            document.dispatchEvent(friendSelectedEvent);
-
-            // Clear the chat area initially
-            chatArea.innerHTML = '';
-        });
-    });
-
-    // Set the first friend as active by default
-    if (friendItems.length > 0) {
-        friendItems[0].classList.add('active');
     }
 }
 

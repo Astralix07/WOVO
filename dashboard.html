@@ -20,22 +20,22 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 
-                <div class="nav-item active" data-target-details="groups-section" data-target-content="default-content">
+                <div class="nav-item active">
                     <i class="fas fa-users"></i>
                     <span class="nav-label">Groups</span>
                 </div>
                 
-                <div class="nav-item" data-target-details="friends-section" data-target-content="friends-content-section">
+                <div class="nav-item">
                     <i class="fas fa-user-friends"></i>
                     <span class="nav-label">Friends</span>
                 </div>
                 
-                <div class="nav-item" data-target-details="tournaments-section" data-target-content="tournaments-content-section">
+                <div class="nav-item">
                     <i class="fas fa-trophy"></i>
                     <span class="nav-label">Tournaments</span>
                 </div>
                 
-                <div class="nav-item" data-target-details="custom-rooms-section" data-target-content="custom-rooms-content-section">
+                <div class="nav-item">
                     <i class="fas fa-gamepad"></i>
                     <span class="nav-label">Custom Rooms</span>
                 </div>
@@ -317,59 +317,6 @@
                         </form>
                     </div>
                     <!-- Friends, Tournaments, and Rooms content remain as separate sections, not shown when in group chat -->
-                </div>
-            </div>
-
-            <!-- Friends Content Section -->
-            <div class="main-content-section" id="friends-content-section">
-                <header class="content-header">
-                    <div class="header-left">
-                        <img src="./assets/default-avatar.png" alt="Friend Avatar" class="header-avatar">
-                        <h3 id="content-title">Friends</h3>
-                    </div>
-                </header>
-                <div class="chat-area group-chat-container" id="dm-chat-container">
-                    <div class="group-messages" id="dm-messages"></div>
-                    <div class="group-message-form-container">
-                        <form class="group-message-form" id="dm-form">
-                            <div class="message-input-container">
-                                <input type="text" id="dm-input" placeholder="Message..." autocomplete="off">
-                            </div>
-                            <button type="submit" id="send-dm-btn">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tournaments Content Section -->
-            <div class="main-content-section" id="tournaments-content-section">
-                <header class="content-header">
-                    <div class="header-left">
-                        <h3 id="content-title">Tournaments</h3>
-                    </div>
-                </header>
-                <div class="chat-area">
-                    <div class="coming-soon-message">
-                        <h2>Coming Soon!</h2>
-                        <p>Tournaments are under construction. Stay tuned!</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Custom Rooms Content Section -->
-            <div class="main-content-section" id="custom-rooms-content-section">
-                <header class="content-header">
-                    <div class="header-left">
-                        <h3 id="content-title">Custom Rooms</h3>
-                    </div>
-                </header>
-                <div class="chat-area">
-                    <div class="coming-soon-message">
-                        <h2>Coming Soon!</h2>
-                        <p>Custom Rooms are under construction. Stay tuned!</p>
-                    </div>
                 </div>
             </div>
 
@@ -720,9 +667,20 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </main>
 
-                <div class="members-sidebar-toggle" id="toggleMembersBtn">
-                    <i class="fas fa-users"></i>
+        <!-- Toggle Button for Members Sidebar -->
+        <button class="action-btn" id="toggleMembersBtn" title="Toggle Members List">
+            <i class="fas fa-users"></i>
+        </button>
+
+        <!-- Members Sidebar (Right) -->
+        <aside class="members-sidebar">
+            <div class="members-header">
+                <h3>MEMBERS</h3>
+            </div>
+            
             <!-- Member Categories -->
             <div class="member-category">
                 <h4>ONLINE — 3</h4>

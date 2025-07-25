@@ -59,23 +59,6 @@ app.post('/api/groups/:groupId/messages', async (req, res) => {
   res.json(data);
 });
 
-// Get DMs between two users
-app.get('/api/dms/:user1_id/:user2_id', async (req, res) => {
-  const { user1_id, user2_id } = req.params;
-
-  const { data, error } = await supabase
-    .from('direct_messages')
-    .select('*, sender:sender_id(username, avatar_url))')
-    .or(`(sender_id.eq.${user1_id},and(receiver_id.eq.${user2_id})),(sender_id.eq.${user2_id},and(receiver_id.eq.${user1_id}))`)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching DMs:', error);
-    return res.status(500).json({ error: error.message });
-  }
-  res.json(data);
-});
-
 // --- Socket.IO for group messaging ---
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -162,41 +145,6 @@ io.on('connection', (socket) => {
     } else {
         if (callback) callback({ status: 'ok' });
     }
-  });
-
-  socket.on('send_dm', async (data, callback) => {
-    const { sender_id, receiver_id, content } = data;
-    if (!sender_id || !receiver_id || !content) {
-      if (callback) callback({ status: 'error', message: 'Missing data for DM' });
-      return;
-    }
-
-    // Save message to the new 'direct_messages' table
-    const { data: newMessage, error } = await supabase
-      .from('direct_messages')
-      .insert({ sender_id, receiver_id, content })
-      .select('*, sender:sender_id(username, avatar_url), receiver:receiver_id(username, avatar_url)')
-      .single();
-
-    if (error) {
-      console.error('Error saving DM:', error);
-      if (callback) callback({ status: 'error', message: error.message });
-      return;
-    }
-
-    // Find recipient's socket and send them the message in real-time
-    const receiverSocketId = connectedUsers.get(receiver_id);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('incoming_dm', newMessage);
-    }
-
-    // Also send to the sender to confirm it was sent and get full message data
-    const senderSocketId = connectedUsers.get(sender_id);
-    if (senderSocketId) {
-        io.to(senderSocketId).emit('incoming_dm', newMessage);
-    }
-
-    if (callback) callback({ status: 'ok', message: newMessage });
   });
 
   socket.on('disconnect', () => {
