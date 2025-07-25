@@ -301,4 +301,103 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- FRIENDS SECTION LOGIC ---
+    const friendsSidebar = document.getElementById('friendsSidebar');
+    const friendChatHeader = document.getElementById('friendChatHeader');
+    const friendAvatar = document.getElementById('friendAvatar');
+    const friendName = document.getElementById('friendName');
+    const friendMessages = document.getElementById('friendMessages');
+    const friendMessageForm = document.getElementById('friendMessageForm');
+    const friendMessageInput = document.getElementById('friendMessageInput');
+    const sendFriendMessageBtn = document.getElementById('sendFriendMessageBtn');
+
+    let friendsList = [];
+    let selectedFriend = null;
+    let friendChats = {};
+
+    async function loadFriendsList() {
+        // Demo: Replace with real fetch from Supabase
+        friendsList = [
+            { id: '1', username: 'Alice', avatar_url: 'assets/default-avatar.png' },
+            { id: '2', username: 'Bob', avatar_url: 'assets/default-avatar.png' },
+            { id: '3', username: 'Charlie', avatar_url: 'assets/default-avatar.png' }
+        ];
+        renderFriendsSidebar();
+        if (friendsList.length > 0) {
+            selectFriend(friendsList[0].id);
+        }
+    }
+
+    function renderFriendsSidebar() {
+        friendsSidebar.innerHTML = friendsList.map(friend => `
+            <div class="friend-list-item" data-friend-id="${friend.id}">
+                <img src="${friend.avatar_url}" alt="avatar">
+                <span class="friend-list-username">${friend.username}</span>
+            </div>
+        `).join('');
+        friendsSidebar.querySelectorAll('.friend-list-item').forEach(item => {
+            item.addEventListener('click', () => {
+                selectFriend(item.dataset.friendId);
+            });
+        });
+    }
+
+    function selectFriend(friendId) {
+        selectedFriend = friendsList.find(f => f.id === friendId);
+        // Highlight selected
+        friendsSidebar.querySelectorAll('.friend-list-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.friendId === friendId);
+        });
+        // Update header
+        friendAvatar.src = selectedFriend.avatar_url;
+        friendName.textContent = selectedFriend.username;
+        // Load chat
+        renderFriendMessages();
+    }
+
+    function renderFriendMessages() {
+        const chat = friendChats[selectedFriend.id] || [];
+        friendMessages.innerHTML = chat.length === 0
+            ? '<div class="coming-soon">No messages yet. Start the conversation!</div>'
+            : chat.map(msg => `
+                <div class="friend-message-row ${msg.isOwn ? 'own' : ''}">
+                    <div class="friend-message-bubble">${escapeHtml(msg.text)}</div>
+                </div>
+            `).join('');
+        friendMessages.scrollTop = friendMessages.scrollHeight;
+    }
+
+    if (friendMessageForm) {
+        friendMessageForm.addEventListener('submit', e => {
+            e.preventDefault();
+            sendFriendMessage();
+        });
+        sendFriendMessageBtn.addEventListener('click', sendFriendMessage);
+    }
+
+    function sendFriendMessage() {
+        const text = friendMessageInput.value.trim();
+        if (!text || !selectedFriend) return;
+        if (!friendChats[selectedFriend.id]) friendChats[selectedFriend.id] = [];
+        friendChats[selectedFriend.id].push({ text, isOwn: true });
+        renderFriendMessages();
+        friendMessageInput.value = '';
+        // Animate send button
+        sendFriendMessageBtn.classList.add('sent');
+        setTimeout(() => sendFriendMessageBtn.classList.remove('sent'), 300);
+    }
+
+    // Animate input and send button on focus
+    if (friendMessageInput) {
+        friendMessageInput.addEventListener('focus', () => {
+            friendMessageForm.classList.add('active');
+        });
+        friendMessageInput.addEventListener('blur', () => {
+            friendMessageForm.classList.remove('active');
+        });
+    }
+
+    // Load friends on entering the section
+    document.querySelector('.nav-item .fa-user-friends')?.closest('.nav-item')?.addEventListener('click', loadFriendsList);
 }); 

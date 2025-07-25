@@ -322,16 +322,27 @@
 
             <!-- Friends Content -->
             <div class="main-content-section" id="friends-content" style="display: none;">
-                <header class="content-header">
-                    <div class="header-left">
-                        <span class="channel-hashtag">@</span>
-                        <h3 id="friends-title">Friends</h3>
-                    </div>
-                </header>
-                <div class="content-container">
-                    <div class="friend-detail-container">
-                        <div class="friend-detail-header">First Friend (Demo)</div>
-                        <div class="coming-soon">Coming Soon: Friend chat and details will appear here.</div>
+                <div class="friends-layout">
+                    <aside class="friends-sidebar" id="friendsSidebar">
+                        <!-- Friends list will be rendered here -->
+                    </aside>
+                    <div class="friends-chat-area">
+                        <header class="content-header" id="friendChatHeader">
+                            <div class="header-left">
+                                <img id="friendAvatar" class="friend-avatar-large" src="assets/default-avatar.png" alt="avatar">
+                                <h3 id="friendName">Friend</h3>
+                            </div>
+                        </header>
+                        <div class="content-container">
+                            <div class="friend-messages" id="friendMessages"></div>
+                            <form class="friend-message-form" id="friendMessageForm" autocomplete="off">
+                                <div class="friend-message-input-container">
+                                    <button type="button" id="addFriendAttachmentBtn"><i class="fas fa-plus-circle"></i></button>
+                                    <input type="text" id="friendMessageInput" placeholder="Message @friend" autocomplete="off" maxlength="2000" />
+                                    <button type="button" id="sendFriendMessageBtn"><i class="fas fa-paper-plane"></i></button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
