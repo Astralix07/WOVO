@@ -273,39 +273,6 @@
         <main class="content-area">
             <!-- Default Content -->
             <div class="main-content-section active" id="default-content">
-
-            <div class="main-content-section" id="friends-content-section">
-                <header class="content-header">
-                    <div class="header-left">
-                        <span class="channel-hashtag">@</span>
-                        <h3 id="content-title">friend_username</h3>
-                    </div>
-                </header>
-                <div class="chat-area">
-                    <div class="coming-soon-message">
-                        <h2>Coming Soon!</h2>
-                        <p>Direct messaging is under construction. Stay tuned!</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="main-content-section" id="tournaments-content-section">
-                <div class="chat-area">
-                    <div class="coming-soon-message">
-                        <h2>Coming Soon!</h2>
-                        <p>Tournaments are under construction. Stay tuned!</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="main-content-section" id="custom-rooms-content-section">
-                <div class="chat-area">
-                    <div class="coming-soon-message">
-                        <h2>Coming Soon!</h2>
-                        <p>Custom Rooms are under construction. Stay tuned!</p>
-                    </div>
-                </div>
-            </div>
                 <header class="content-header">
                     <div class="header-left">
                         <span class="channel-hashtag">#</span>
@@ -350,6 +317,52 @@
                         </form>
                     </div>
                     <!-- Friends, Tournaments, and Rooms content remain as separate sections, not shown when in group chat -->
+                </div>
+            </div>
+
+            <!-- Friends Content Section -->
+            <div class="main-content-section" id="friends-content-section">
+                <header class="content-header">
+                    <div class="header-left">
+                        <span class="channel-hashtag">@</span>
+                        <h3 id="content-title">Friends</h3>
+                    </div>
+                </header>
+                <div class="chat-area">
+                    <div class="coming-soon-message">
+                        <h2>Coming Soon!</h2>
+                        <p>Direct messaging is under construction. Stay tuned!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tournaments Content Section -->
+            <div class="main-content-section" id="tournaments-content-section">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h3 id="content-title">Tournaments</h3>
+                    </div>
+                </header>
+                <div class="chat-area">
+                    <div class="coming-soon-message">
+                        <h2>Coming Soon!</h2>
+                        <p>Tournaments are under construction. Stay tuned!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Rooms Content Section -->
+            <div class="main-content-section" id="custom-rooms-content-section">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h3 id="content-title">Custom Rooms</h3>
+                    </div>
+                </header>
+                <div class="chat-area">
+                    <div class="coming-soon-message">
+                        <h2>Coming Soon!</h2>
+                        <p>Custom Rooms are under construction. Stay tuned!</p>
+                    </div>
                 </div>
             </div>
 
@@ -700,20 +713,9 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
 
-        <!-- Toggle Button for Members Sidebar -->
-        <button class="action-btn" id="toggleMembersBtn" title="Toggle Members List">
-            <i class="fas fa-users"></i>
-        </button>
-
-        <!-- Members Sidebar (Right) -->
-        <aside class="members-sidebar">
-            <div class="members-header">
-                <h3>MEMBERS</h3>
-            </div>
-            
+                <div class="members-sidebar-toggle" id="toggleMembersBtn">
+                    <i class="fas fa-users"></i>
             <!-- Member Categories -->
             <div class="member-category">
                 <h4>ONLINE — 3</h4>
