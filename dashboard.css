@@ -399,6 +399,27 @@ html, body {
     display: inline-block;
 }
 
+.placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.placeholder-content i {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.placeholder-content h2 {
+    font-size: 24px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
 #content-title {
     color: var(--text-primary);
     font-size: 16px;

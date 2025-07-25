@@ -735,100 +735,25 @@ document.querySelectorAll('.nav-item:not(.theme-toggle)').forEach(item => {
         
         const sectionId = `${sectionName.toLowerCase()}-section`;
         const targetSection = document.getElementById(sectionId);
+        
         if (targetSection) {
             targetSection.classList.add('active');
 
-            // Hide all content sections first
-            document.querySelectorAll('.section-content').forEach(content => {
-                content.style.display = 'none';
-            });
+            const groupChatContainer = document.getElementById('groupChatContainer');
+            const placeholderContent = document.getElementById('placeholderContent');
 
-            // Show corresponding content section
-            let contentClass = '';
-            switch(sectionName.toLowerCase()) {
-                case 'groups':
-                    contentClass = 'groups-content';
-                    break;
-                case 'friends':
-                    contentClass = 'friends-content';
-                    break;
-                case 'tournaments':
-                    contentClass = 'tournaments-content';
-                    break;
-                case 'custom rooms':
-                    contentClass = 'rooms-content';
-                    break;
-            }
-
-            if (contentClass) {
-                const contentSection = document.querySelector(`.${contentClass}`);
-                if (contentSection) {
-                    contentSection.style.display = 'flex';
+            if (sectionName.toLowerCase() === 'groups') {
+                placeholderContent.style.display = 'none';
+                groupChatContainer.style.display = 'flex';
+                // Re-select the active group to load its content
+                const activeGroup = document.querySelector('#groups-section .group-item.active');
+                if (activeGroup) {
+                    handleGroupSelection(activeGroup);
                 }
-            }
-
-            // Update header based on the section type
-            switch(sectionName.toLowerCase()) {
-                case 'groups':
-                    const defaultGroup = targetSection.querySelector('.group-item');
-                    if (defaultGroup) {
-                        const groupName = defaultGroup.querySelector('.group-name').textContent;
-                        const groupMeta = defaultGroup.querySelector('.group-meta').textContent;
-                        const onlineCount = groupMeta.match(/(\d+)\s+online/)[1];
-                        updateHeaderInfo(groupName, onlineCount);
-                        
-                        // Set this group as active
-                        document.querySelectorAll('.group-item').forEach(g => g.classList.remove('active'));
-                        defaultGroup.classList.add('active');
-                    }
-                    break;
-
-                case 'friends':
-                    const defaultFriend = targetSection.querySelector('.friend-item');
-                    if (defaultFriend) {
-                        const friendName = defaultFriend.querySelector('.friend-name').textContent;
-                        const isOnline = defaultFriend.querySelector('.status-indicator.online');
-                        updateHeaderInfo(friendName, isOnline ? 'Online' : null);
-                        
-                        // Set this friend as active
-                        document.querySelectorAll('.friend-item').forEach(f => f.classList.remove('active'));
-                        defaultFriend.classList.add('active');
-                    }
-                    break;
-
-                case 'tournaments':
-                    const defaultTournament = targetSection.querySelector('.tournament-item');
-                    if (defaultTournament) {
-                        const tournamentName = defaultTournament.querySelector('.tournament-name').textContent;
-                        const teamsCount = defaultTournament.querySelector('.tournament-meta').textContent.match(/(\d+)\s+Teams/)[1];
-                        updateHeaderInfo(tournamentName, `${teamsCount} Teams`);
-                        
-                        // Set this tournament as active
-                        document.querySelectorAll('.tournament-item').forEach(t => t.classList.remove('active'));
-                        defaultTournament.classList.add('active');
-                    }
-                    break;
-
-                case 'custom rooms':
-                    const defaultRoom = targetSection.querySelector('.room-item');
-                    if (defaultRoom) {
-                        const roomName = defaultRoom.querySelector('.room-name').textContent;
-                        const playerCount = defaultRoom.querySelector('.room-meta').textContent.match(/(\d+)\/(\d+)/);
-                        updateHeaderInfo(roomName, `${playerCount[1]}/${playerCount[2]} Players`);
-                        
-                        // Set this room as active
-                        document.querySelectorAll('.room-item').forEach(r => r.classList.remove('active'));
-                        defaultRoom.classList.add('active');
-                    }
-                    break;
-
-                case 'settings':
-                    updateHeaderInfo('User Settings', null);
-                    break;
-
-                default:
-                    updateHeaderInfo(sectionName, null);
-                    break;
+            } else {
+                placeholderContent.style.display = 'flex';
+                groupChatContainer.style.display = 'none';
+                updateHeaderInfo(sectionName, 'Coming Soon');
             }
         }
 
