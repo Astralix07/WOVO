@@ -6,22 +6,19 @@
   display: flex;
   flex-direction: column;
 }
-.group-chat-container,
-.dm-chat-container {
+.group-chat-container {
   flex: 1;
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.group-messages,
-.dm-messages {
+.group-messages {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
-.group-message,
-.dm-message {
+.group-message {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -31,13 +28,11 @@
   position: relative;
 }
 
-.group-message:hover,
-.dm-message:hover {
+.group-message:hover {
     background: rgba(4, 4, 5, 0.07);
 }
 
-:root[data-theme="dark"] .group-message:hover,
-:root[data-theme="dark"] .dm-message:hover {
+:root[data-theme="dark"] .group-message:hover {
     background: rgba(79, 84, 92, 0.16);
 }
 
@@ -98,16 +93,14 @@
 .group-message + .group-message {
   margin-top: 8px;
 }
-.group-chat-start,
-.dm-chat-start {
+.group-chat-start {
   text-align: center;
   color: var(--text-muted);
   font-size: 15px;
   margin: 32px 0 0 0;
   letter-spacing: 0.01em;
 }
-.group-message-form,
-.dm-message-form {
+.group-message-form {
   display: flex;
   align-items: center;
   padding: 24px 32px 24px 32px;
@@ -159,58 +152,6 @@
 }
 
 #addAttachmentBtn:hover {
-    color: var(--text-primary);
-}
-
-/* DM input and buttons styling */
-.dm-message-form .message-input-container {
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-#dmMessageInput {
-    flex: 1;
-    padding: 14px 18px;
-    border-radius: 8px;
-    border: none;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: 16px;
-    outline: none;
-    transition: border 0.2s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-}
-#dmMessageInput:focus {
-    border: 1.5px solid var(--accent-color);
-}
-#sendDmMessageBtn {
-    background: var(--accent-color);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 18px;
-    font-size: 20px;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-#sendDmMessageBtn:hover {
-    background: var(--accent-hover);
-}
-#addDmAttachmentBtn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0 8px;
-    transition: color 0.2s;
-}
-#addDmAttachmentBtn:hover {
     color: var(--text-primary);
 }
 
@@ -665,7 +606,7 @@
 .reaction .count {
     font-weight: 600;
     color: var(--text-secondary);
-} 
+}
 
 /* Responsive adjustments */
 @media (max-width: 600px) {
