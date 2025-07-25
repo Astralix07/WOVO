@@ -315,12 +315,12 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadDms(friendId) {
         dmMessages.innerHTML = 'Loading...';
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        // Correct .or() syntax for Supabase
         const { data, error } = await supabase
             .from('direct_messages')
             .select('*, sender:sender_id(*), receiver:receiver_id(*)')
-            .or(`(sender_id.eq.${currentUser.id},receiver_id.eq.${friendId}),(sender_id.eq.${friendId},receiver_id.eq.${currentUser.id})`)
+            .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${currentUser.id})`)
             .order('created_at', { ascending: true });
-        
         dmMessages.innerHTML = '';
         if (!error && data) {
             data.forEach(msg => renderDm(msg));
