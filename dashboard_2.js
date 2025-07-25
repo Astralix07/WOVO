@@ -303,7 +303,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FRIENDS SECTION LOGIC ---
-    const friendsSidebar = document.getElementById('friendsSidebar');
+    // Remove demo sidebar logic
+    // Use real friends list from details section
+    const realFriendsList = document.getElementById('realFriendsList');
     const friendChatHeader = document.getElementById('friendChatHeader');
     const friendAvatar = document.getElementById('friendAvatar');
     const friendName = document.getElementById('friendName');
@@ -312,48 +314,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const friendMessageInput = document.getElementById('friendMessageInput');
     const sendFriendMessageBtn = document.getElementById('sendFriendMessageBtn');
 
-    let friendsList = [];
     let selectedFriend = null;
     let friendChats = {};
 
-    async function loadFriendsList() {
-        // Demo: Replace with real fetch from Supabase
-        friendsList = [
-            { id: '1', username: 'Alice', avatar_url: 'assets/default-avatar.png' },
-            { id: '2', username: 'Bob', avatar_url: 'assets/default-avatar.png' },
-            { id: '3', username: 'Charlie', avatar_url: 'assets/default-avatar.png' }
-        ];
-        renderFriendsSidebar();
-        if (friendsList.length > 0) {
-            selectFriend(friendsList[0].id);
-        }
-    }
-
-    function renderFriendsSidebar() {
-        friendsSidebar.innerHTML = friendsList.map(friend => `
-            <div class="friend-list-item" data-friend-id="${friend.id}">
-                <img src="${friend.avatar_url}" alt="avatar">
-                <span class="friend-list-username">${friend.username}</span>
-            </div>
-        `).join('');
-        friendsSidebar.querySelectorAll('.friend-list-item').forEach(item => {
-            item.addEventListener('click', () => {
-                selectFriend(item.dataset.friendId);
+    // Attach click listeners to real friends list
+    function attachRealFriendsListeners() {
+        if (!realFriendsList) return;
+        realFriendsList.querySelectorAll('.friend-item').forEach(item => {
+            item.addEventListener('click', async () => {
+                const friendId = item.dataset.userId;
+                const friendUsername = item.querySelector('.friend-name')?.textContent || 'Friend';
+                const friendAvatarUrl = item.querySelector('img')?.src || 'assets/default-avatar.png';
+                selectFriend(friendId, friendUsername, friendAvatarUrl);
             });
         });
     }
 
-    function selectFriend(friendId) {
-        selectedFriend = friendsList.find(f => f.id === friendId);
-        // Highlight selected
-        friendsSidebar.querySelectorAll('.friend-list-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.friendId === friendId);
-        });
+    async function selectFriend(friendId, username, avatarUrl) {
+        selectedFriend = { id: friendId, username, avatar_url: avatarUrl };
         // Update header
-        friendAvatar.src = selectedFriend.avatar_url;
-        friendName.textContent = selectedFriend.username;
+        friendAvatar.src = avatarUrl;
+        friendName.textContent = username;
         // Load chat
+        await loadFriendChat(friendId);
         renderFriendMessages();
+    }
+
+    async function loadFriendChat(friendId) {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const { data, error } = await supabase
+            .from('friend_messages')
+            .select('*')
+            .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+            .or(`sender_id.eq.${friendId},receiver_id.eq.${friendId}`)
+            .order('created_at', { ascending: true });
+        if (!error) {
+            friendChats[friendId] = (data || []).filter(m =>
+                (m.sender_id === currentUser.id && m.receiver_id === friendId) ||
+                (m.sender_id === friendId && m.receiver_id === currentUser.id)
+            ).map(m => ({
+                text: m.content,
+                isOwn: m.sender_id === currentUser.id
+            }));
+        }
     }
 
     function renderFriendMessages() {
@@ -379,13 +382,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function sendFriendMessage() {
         const text = friendMessageInput.value.trim();
         if (!text || !selectedFriend) return;
-        if (!friendChats[selectedFriend.id]) friendChats[selectedFriend.id] = [];
-        friendChats[selectedFriend.id].push({ text, isOwn: true });
-        renderFriendMessages();
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        socket.emit('friend_message_send', {
+            sender_id: currentUser.id,
+            receiver_id: selectedFriend.id,
+            content: text
+        });
         friendMessageInput.value = '';
-        // Animate send button
         sendFriendMessageBtn.classList.add('sent');
         setTimeout(() => sendFriendMessageBtn.classList.remove('sent'), 300);
+    }
+
+    // Real-time receive
+    if (window.socket) {
+        socket.on('friend_message', data => {
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+            const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
+            if (!friendChats[friendId]) friendChats[friendId] = [];
+            friendChats[friendId].push({
+                text: data.content,
+                isOwn: data.sender_id === currentUser.id
+            });
+            if (selectedFriend && selectedFriend.id === friendId) {
+                renderFriendMessages();
+            }
+        });
     }
 
     // Animate input and send button on focus
@@ -398,6 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Load friends on entering the section
-    document.querySelector('.nav-item .fa-user-friends')?.closest('.nav-item')?.addEventListener('click', loadFriendsList);
+    // Attach listeners when entering Friends section
+    document.querySelector('.nav-item .fa-user-friends')?.closest('.nav-item')?.addEventListener('click', () => {
+        setTimeout(attachRealFriendsListeners, 300);
+        // Optionally, select the first friend by default
+        const firstFriend = realFriendsList?.querySelector('.friend-item');
+        if (firstFriend) firstFriend.click();
+    });
 }); 
