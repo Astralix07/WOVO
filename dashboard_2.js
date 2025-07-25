@@ -338,17 +338,25 @@ document.addEventListener('DOMContentLoaded', () => {
         dmMessages.innerHTML = loaderHTML;
         // Load messages
         await loadDms(friend.id);
-        // Subscribe to new DMs
+        // Subscribe to new DMs (both sent and received)
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (currentDmSubscription) currentDmSubscription.unsubscribe();
         currentDmSubscription = supabase
             .channel(`dms_${currentUser.id}_${friend.id}`)
             .on('postgres_changes', {
-                event: '*',
+                event: 'INSERT',
                 schema: 'public',
                 table: 'direct_messages',
                 filter: `or(and(sender_id.eq.${currentUser.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${currentUser.id}))`
             }, payload => {
-                renderDm(payload.new);
+                // Only render if the message is for the current open DM
+                if (
+                    (payload.new.sender_id === currentUser.id && payload.new.receiver_id === friend.id) ||
+                    (payload.new.sender_id === friend.id && payload.new.receiver_id === currentUser.id)
+                ) {
+                    renderDm(payload.new, true);
+                    dmMessages.scrollTop = dmMessages.scrollHeight;
+                }
             })
             .subscribe();
     }
