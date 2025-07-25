@@ -1,4 +1,13 @@
 /* --- Discord-Style Group Chat --- */
+
+/* Header Avatar */
+.header-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+}
 /* Ensure chat fills the content area */
 .content-container {
   height: 100%;

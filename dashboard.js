@@ -3790,14 +3790,20 @@ async function fetchAndDisplayFriends() {
         // Fetch friend user data from the 'users' table
         const { data: friendUsers, error: userError } = await supabase
             .from('users')
-            .select('id, username')
+            .select('id, username, avatar_url')
             .in('id', friendIds);
 
         if (userError) throw userError;
 
         if (friendUsers && friendUsers.length > 0) {
+            renderFriendsList(friendUsers);
+            // Display the first friend by default
             const firstFriend = friendUsers[0];
+            const friendsContent = document.getElementById('friends-content-section');
+            const headerAvatar = friendsContent.querySelector('.header-avatar');
+            
             contentTitle.textContent = firstFriend.username;
+            headerAvatar.src = firstFriend.avatar_url || './assets/default-avatar.png';
             chatArea.innerHTML = `<div class="coming-soon-message"><h2>Connecting...</h2><p>WE ARE WORKING ON CONNECTING YOU AND ${firstFriend.username.toUpperCase()}. PLEASE BE PATIENT.</p></div>`;
         } else {
             contentTitle.textContent = 'Friends';
@@ -3808,6 +3814,59 @@ async function fetchAndDisplayFriends() {
         console.error('Error fetching friends:', error);
         contentTitle.textContent = 'Friends';
         chatArea.innerHTML = `<div class="coming-soon-message"><h2>Error</h2><p>Could not load friends list. Please try again later.</p></div>`;
+    }
+}
+
+function renderFriendsList(friends) {
+    const friendsListContainer = document.getElementById('realFriendsList');
+    if (!friendsListContainer) return;
+
+    friendsListContainer.innerHTML = ''; // Clear existing list
+
+    friends.forEach(friend => {
+        const friendItem = document.createElement('div');
+        friendItem.className = 'friend-item group-item'; // Re-use group-item styling
+        friendItem.dataset.friendId = friend.id;
+        friendItem.dataset.friendName = friend.username;
+        friendItem.dataset.friendAvatar = friend.avatar_url || './assets/default-avatar.png';
+
+        friendItem.innerHTML = `
+            <div class="group-icon">
+                <img src="${friend.avatar_url || './assets/default-avatar.png'}" alt="${friend.username}" class="avatar">
+            </div>
+            <div class="group-info">
+                <div class="group-name">${friend.username}</div>
+            </div>
+        `;
+
+        friendsListContainer.appendChild(friendItem);
+    });
+
+    // Add click listeners
+    const friendItems = friendsListContainer.querySelectorAll('.friend-item');
+    friendItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Remove active class from all friend items
+            friendItems.forEach(i => i.classList.remove('active'));
+            // Add active class to clicked item
+            item.classList.add('active');
+
+            const friendName = item.dataset.friendName;
+            const friendAvatar = item.dataset.friendAvatar;
+            const friendsContent = document.getElementById('friends-content-section');
+            const contentTitle = friendsContent.querySelector('#content-title');
+            const headerAvatar = friendsContent.querySelector('.header-avatar');
+            const chatArea = friendsContent.querySelector('.chat-area');
+
+            contentTitle.textContent = friendName;
+            headerAvatar.src = friendAvatar;
+            chatArea.innerHTML = `<div class="coming-soon-message"><h2>Connecting...</h2><p>WE ARE WORKING ON CONNECTING YOU AND ${friendName.toUpperCase()}. PLEASE BE PATIENT.</p></div>`;
+        });
+    });
+
+    // Set the first friend as active by default
+    if (friendItems.length > 0) {
+        friendItems[0].classList.add('active');
     }
 }
 
