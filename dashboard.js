@@ -6,6 +6,26 @@ const SUPABASE_URL = 'https://mygdcrvbrqfxudvxrwpq.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15Z2RjcnZicnFmeHVkdnhyd3BxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NjQ1MzIsImV4cCI6MjA2ODM0MDUzMn0.5Wavk9j2oZ2BbBqeULr5TSYcQMWk_PFJAbP9RYxNAiU';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Mentions state
+let currentGroupMembers = [];
+let mentionQuery = '';
+let isMentionPopupOpen = false;
+
+// --- BROWSER NOTIFICATIONS ---
+function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('This browser does not support desktop notification');
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission();
+    }
+}
+
+function showBrowserNotification(title, body, icon) {
+    if (document.hidden && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: icon || './assets/wovo-logo-small.png' });
+    }
+}
+
 // DOM Elements - Global
 const sidebar = document.getElementById('sidebar');
 const hamburgerBtn = document.getElementById('hamburger-btn');
@@ -23,6 +43,8 @@ updateThemeIcon(savedTheme);
 
 // Initialize all DOM elements and event listeners when document is ready
 document.addEventListener('DOMContentLoaded', () => {
+    requestNotificationPermission();
+
     // Initialize DOM elements
     const logoutBtn = document.getElementById('logout-btn');
     const settingsBtn = document.querySelector('.user-settings-btn');
@@ -75,29 +97,366 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Update main content area
             const groupChatContainer = document.getElementById('groupChatContainer');
-            const friendsContent = document.getElementById('friends-content'); // Assuming you'll create this
+            const dmChatSection = document.getElementById('dm-chat-section');
+
+            // Hide all main content sections first
+            document.querySelectorAll('.main-content-section').forEach(s => s.classList.remove('active'));
 
             if (target === 'groups-section') {
-                contentTitle.textContent = 'ALL INDIA'; // Or the active group
-                if(groupChatContainer) groupChatContainer.style.display = 'flex';
-                if(friendsContent) friendsContent.style.display = 'none';
+                document.getElementById('default-content').classList.add('active');
             } else if (target === 'friends-section') {
-                contentTitle.textContent = 'Friends';
-                if(groupChatContainer) groupChatContainer.style.display = 'none';
-                // You would show friends-related content here
-                // For now, let's just clear the main content
-                if(friendsContent) friendsContent.style.display = 'block';
-                 else {
-                    mainContent.querySelector('.content-container').innerHTML = '<div id="friends-content" style="padding: 20px;">Friend content goes here.</div>';
-                }
+                // When friends tab is clicked, we don't show a chat window yet.
+                // We just show the friends list. The main content can be a placeholder.
+                document.getElementById('default-content').classList.add('active'); // Or a new friends placeholder section
+                renderFriendsList();
             } else {
-                // Handle other sections similarly
-                contentTitle.textContent = item.querySelector('.nav-label').textContent;
-                if(groupChatContainer) groupChatContainer.style.display = 'none';
-                if(friendsContent) friendsContent.style.display = 'none';
-                mainContent.querySelector('.content-container').innerHTML = `<div style="padding: 20px;">${item.querySelector('.nav-label').textContent} content goes here.</div>`;
+                // Handle other sections by showing a placeholder
+                const placeholder = document.getElementById('default-content');
+                placeholder.classList.add('active');
+                placeholder.querySelector('.content-container').innerHTML = `<div style="padding: 20px;">${item.querySelector('.nav-label').textContent} content goes here.</div>`;
             }
         });
+    });
+
+    // DM form submission
+    const dmForm = document.getElementById('dm-message-form');
+    const dmInput = document.getElementById('dm-message-input');
+    if (dmForm && dmInput) {
+        dmForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const content = dmInput.value.trim();
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+
+            if (content && currentDmFriend && currentUser) {
+                const message = {
+                    toUserId: currentDmFriend.id,
+                    fromUserId: currentUser.id,
+                    content: content
+                };
+
+                // Emit to server
+                socket.emit('direct_message_send', message, (response) => {
+                    if (response.status === 'ok') {
+                        // Optimistically add to UI
+                        appendDmMessage(response.message, document.getElementById('dm-messages'), currentUser.id);
+                    } else {
+                        showNotification('Failed to send message', 'error');
+                    }
+                });
+
+                dmInput.value = '';
+            }
+        });
+    }
+
+    // Listen for incoming DMs
+    socket.on('direct_message_receive', (message) => {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (currentDmFriend && message.sender_id === currentDmFriend.id) {
+            // If the DM is for the currently open chat, append it
+            appendDmMessage(message, document.getElementById('dm-messages'), currentUser.id);
+        } else {
+            // Otherwise, update the unread count and re-render the list
+            const friend = friends.find(f => f.id === message.sender_id);
+            if (friend) {
+                friend.unread_count = (friend.unread_count || 0) + 1;
+                renderFriendsList(); // Re-render to show the badge
+            }
+            showNotification(`New message from ${message.sender.username}`, 'info');
+            if (document.hidden) { // Only show browser notification if tab is not active
+                showBrowserNotification(`New message from ${message.sender.username}`, message.content, message.sender.avatar_url);
+            }
+        }
+    });
+
+    // Typing indicator logic
+    let typingTimer;
+    const doneTypingInterval = 1500; // 1.5 seconds
+
+    if (dmInput) {
+        dmInput.addEventListener('input', () => {
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+            if (currentDmFriend && currentUser) {
+                clearTimeout(typingTimer);
+                socket.emit('user_typing_start', {
+                    toUserId: currentDmFriend.id,
+                    fromUserId: currentUser.id
+                });
+                typingTimer = setTimeout(() => {
+                    socket.emit('user_typing_stop', {
+                        toUserId: currentDmFriend.id,
+                        fromUserId: currentUser.id
+                    });
+                }, doneTypingInterval);
+            }
+        });
+    }
+
+    socket.on('user_typing_start', ({ fromUserId }) => {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (currentDmFriend && fromUserId === currentDmFriend.id) {
+            typingIndicator.textContent = `${currentDmFriend.username} is typing...`;
+            typingIndicator.classList.add('active');
+        }
+    });
+
+    socket.on('user_typing_stop', ({ fromUserId }) => {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (currentDmFriend && fromUserId === currentDmFriend.id) {
+            typingIndicator.classList.remove('active');
+            typingIndicator.textContent = '';
+        }
+    });
+
+    // Edit/Delete Message Logic
+    const dmMessagesContainer = document.getElementById('dm-messages');
+    const dmMessageForm = document.getElementById('dm-message-form');
+    const emojiPicker = document.querySelector('emoji-picker');
+    const editModal = document.getElementById('edit-message-modal');
+    const edit_textarea = document.getElementById('edit-message-textarea');
+    const saveEditBtn = document.getElementById('save-edit-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    let messageToEditId = null;
+    let activeReactionMessageId = null;
+    let readReceiptObserver;
+
+    dmMessagesContainer.addEventListener('click', async (e) => {
+        const messageEl = e.target.closest('.message-item');
+        if (!messageEl) return;
+
+        const messageId = messageEl.dataset.messageId;
+        const reactBtn = e.target.closest('.react-btn');
+        const reactionItem = e.target.closest('.reaction-item');
+        const editBtn = e.target.closest('.edit-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+
+        if (reactBtn) {
+            activeReactionMessageId = messageId;
+            const rect = reactBtn.getBoundingClientRect();
+            emojiPicker.style.top = `${window.scrollY + rect.top - emojiPicker.offsetHeight - 10}px`;
+            emojiPicker.style.left = `${window.scrollX + rect.left - (emojiPicker.offsetWidth / 2) + (rect.width / 2)}px`;
+            emojiPicker.style.display = 'block';
+            e.stopPropagation();
+        } else if (reactionItem) {
+            const emoji = reactionItem.dataset.emoji;
+            await handleReaction(messageId, emoji);
+        } else if (editBtn) {
+            const messageText = messageEl.querySelector('.message-text').textContent.replace('(edited)', '').trim();
+            messageToEditId = messageId;
+            edit_textarea.value = messageText;
+            editModal.style.display = 'flex';
+        } else if (deleteBtn) {
+            if (confirm('Are you sure you want to delete this message?')) {
+                handleDeleteMessage(messageId);
+            }
+        }
+    });
+
+    emojiPicker.addEventListener('emoji-click', async (e) => {
+        if (activeReactionMessageId) {
+            await handleReaction(activeReactionMessageId, e.detail.unicode);
+        }
+        emojiPicker.style.display = 'none';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!emojiPicker.contains(e.target) && e.target.closest('.react-btn') === null) {
+            emojiPicker.style.display = 'none';
+        }
+    });
+
+    async function handleReaction(messageId, emoji) {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const messageElement = document.getElementById(`message-${messageId}`);
+        const existingReaction = messageElement.querySelector(`.reaction-item[data-emoji="${emoji}"]`);
+        let hasReacted = false;
+
+        if (existingReaction) {
+            // This is a simplified check. A real implementation would need to know if the *current user* has reacted.
+            // For now, we'll assume clicking an existing reaction is a toggle by the current user.
+            // A more robust solution would fetch reaction users from the backend.
+            hasReacted = true; // Simplified assumption
+        }
+
+        try {
+            let reactionData;
+            if (hasReacted) {
+                // --- Remove Reaction ---
+                await fetch(`/api/dm/messages/${messageId}/reactions`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id, emoji })
+                });
+                reactionData = { messageId, emoji, userId: currentUser.id, type: 'remove' };
+            } else {
+                // --- Add Reaction ---
+                const response = await fetch(`/api/dm/messages/${messageId}/reactions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id, emoji })
+                });
+                const newReaction = await response.json();
+                reactionData = { ...newReaction, type: 'add' };
+            }
+
+            // Update UI locally and emit socket event
+            updateReactionUI(reactionData);
+            socket.emit('direct_message_react', { toUserId: activeDmFriend.id, reactionData });
+
+        } catch (error) {
+            console.error('Failed to update reaction:', error);
+        }
+    }
+
+    function updateReactionUI({ messageId, emoji, userId, type }) {
+        const messageElement = document.getElementById(`message-${messageId}`);
+        if (!messageElement) return;
+
+        const reactionsContainer = messageElement.querySelector('.message-reactions');
+        let reactionItem = reactionsContainer.querySelector(`.reaction-item[data-emoji="${emoji}"]`);
+
+        if (type === 'add') {
+            if (reactionItem) {
+                const countSpan = reactionItem.querySelector('.reaction-count');
+                countSpan.textContent = parseInt(countSpan.textContent) + 1;
+            } else {
+                const newReaction = document.createElement('div');
+                newReaction.classList.add('reaction-item');
+                newReaction.dataset.emoji = emoji;
+                newReaction.innerHTML = `${emoji} <span class="reaction-count">1</span>`;
+                reactionsContainer.appendChild(newReaction);
+            }
+        } else if (type === 'remove') {
+            if (reactionItem) {
+                const countSpan = reactionItem.querySelector('.reaction-count');
+                const currentCount = parseInt(countSpan.textContent);
+                if (currentCount > 1) {
+                    countSpan.textContent = currentCount - 1;
+                } else {
+                    reactionItem.remove();
+                }
+            }
+        }
+    }
+
+    cancelEditBtn.addEventListener('click', () => {
+        editModal.style.display = 'none';
+        messageToEditId = null;
+    });
+
+    saveEditBtn.addEventListener('click', async () => {
+        const newContent = edit_textarea.value.trim();
+        if (!newContent || !messageToEditId) return;
+
+        try {
+            const response = await fetch(`/api/dm/messages/${messageToEditId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: newContent })
+            });
+
+            if (!response.ok) throw new Error('Failed to save message');
+
+            const updatedMessage = await response.json();
+
+            // Update UI
+            const messageEl = document.getElementById(`message-${messageToEditId}`);
+            messageEl.querySelector('.message-text').innerHTML = `${updatedMessage.content} <span class="edited-indicator">(edited)</span>`;
+
+            // Notify other user
+            socket.emit('direct_message_edit', { message: updatedMessage, toUserId: currentDmFriend.id });
+
+            // Close modal
+            editModal.style.display = 'none';
+            messageToEditId = null;
+
+        } catch (error) {
+            console.error('Error saving message:', error);
+            showNotification('Failed to save message', 'error');
+        }
+    });
+
+    async function handleDeleteMessage(messageId) {
+        try {
+            const response = await fetch(`/api/dm/messages/${messageId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete message');
+
+            document.getElementById(`message-${messageId}`).remove();
+            socket.emit('direct_message_delete', { messageId, toUserId: currentDmFriend.id });
+        } catch (error) {
+            console.error('Error deleting message:', error);
+            showNotification('Failed to delete message', 'error');
+        }
+    }
+
+    // Socket listeners for real-time updates
+    socket.on('direct_message_reacted', (reactionData) => {
+        updateReactionUI(reactionData);
+    });
+
+    socket.on('messages_read', ({ messageIds }) => {
+        messageIds.forEach(id => {
+            const receipt = document.querySelector(`#message-${id} .read-receipt`);
+            if (receipt) {
+                receipt.classList.add('read');
+            }
+        });
+    });
+
+    function setupReadReceiptObserver(currentUserId) {
+        if (readReceiptObserver) {
+            readReceiptObserver.disconnect();
+        }
+
+        const options = { root: dmMessagesContainer, rootMargin: '0px', threshold: 1.0 };
+
+        readReceiptObserver = new IntersectionObserver(async (entries, observer) => {
+            const messagesToMarkAsRead = [];
+
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const messageEl = entry.target;
+                    messagesToMarkAsRead.push(messageEl.dataset.messageId);
+                    observer.unobserve(messageEl); // Stop observing once it's marked
+                }
+            });
+
+            if (messagesToMarkAsRead.length > 0) {
+                await fetch('/api/dm/messages/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messageIds: messagesToMarkAsRead, userId: currentUserId })
+                });
+
+                socket.emit('mark_messages_read', {
+                    toUserId: activeDmFriend.id,
+                    messageIds: messagesToMarkAsRead
+                });
+            }
+        }, options);
+
+        // Observe all unread, received messages
+        const unreadMessages = dmMessagesContainer.querySelectorAll('.message-item.received');
+        unreadMessages.forEach(messageEl => {
+            const receipt = messageEl.querySelector('.read-receipt');
+            if (receipt && !receipt.classList.contains('read')) {
+                 readReceiptObserver.observe(messageEl);
+            }
+        });
+    }
+
+    socket.on('direct_message_edited', (message) => {
+        const messageEl = document.getElementById(`message-${message.id}`);
+        if (messageEl) {
+            messageEl.querySelector('.message-text').innerHTML = `${message.content} <span class="edited-indicator">(edited)</span>`;
+        }
+    });
+
+    socket.on('direct_message_deleted', ({ messageId }) => {
+        const messageEl = document.getElementById(`message-${messageId}`);
+        if (messageEl) {
+            messageEl.remove();
+        }
     });
 
     // Initialize section toggles
@@ -152,6 +511,29 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // Initialize logout functionality
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                localStorage.removeItem('wovo_user');
+                window.location.href = 'index.html';
+            } catch (error) {
+                showNotification('Failed to log out', 'error');
+            }
+        });
+    }
+
+    // Friend list filter controls
+    const friendFilters = document.querySelectorAll('.friends-list-controls .control-btn');
+    friendFilters.forEach(button => {
+        button.addEventListener('click', () => {
+            friendFilters.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            const filter = button.dataset.filter;
+            renderFriendsList(filter);
+        });
+    });
 
     // Initialize logout functionality
     if (logoutBtn) {
@@ -446,6 +828,164 @@ async function joinGroup(groupId) {
     }
 }
 
+// Render the friends list
+async function renderFriendsList(filter = 'all') {
+    const friendsListContainer = document.getElementById('realFriendsList');
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+
+    if (!friendsListContainer || !currentUser) {
+        if(friendsListContainer) friendsListContainer.innerHTML = '<div>Please log in to see your friends.</div>';
+        return;
+    }
+
+    friendsListContainer.innerHTML = '<div><i class="fas fa-spinner fa-spin"></i> Loading friends...</div>';
+
+    try {
+        const response = await fetch(`/api/friends/${currentUser.id}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch friends');
+        }
+        const friends = await response.json();
+
+        const filteredFriends = friends.filter(friend => {
+            if (filter === 'all') return friend.status === 'accepted';
+            if (filter === 'online') return friend.status === 'accepted' && friend.online_status === 'online';
+            if (filter === 'pending') return friend.status === 'pending';
+            if (filter === 'blocked') return friend.status === 'blocked';
+            return false;
+        });
+
+        if (filteredFriends.length === 0) {
+            friendsListContainer.innerHTML = `<div>No ${filter} friends found.</div>`;
+            return;
+        }
+
+        friendsListContainer.innerHTML = filteredFriends.map(friend => {
+            const unreadBadge = friend.unread_count > 0 ? `<span class="unread-badge">${friend.unread_count}</span>` : '';
+            return `
+                <div class="friend-item" data-user-id="${friend.id}">
+                    <div class="friend-avatar">
+                        <img src="${friend.avatar_url || DEFAULT_AVATAR}" alt="Avatar">
+                        <div class="status-indicator ${friend.online_status === 'online' ? 'online' : 'offline'}"></div>
+                    </div>
+                    <div class="friend-info">
+                        <span class="friend-name">${friend.username}</span>
+                        <span class="friend-status-text">${friend.status === 'pending' ? 'Incoming Request' : (friend.online_status || 'Offline')}</span>
+                        ${unreadBadge}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Add event listeners to new friend items
+        document.querySelectorAll('.friend-item').forEach(item => {
+            item.addEventListener('click', async () => {
+                const userId = item.dataset.userId;
+                const friendData = filteredFriends.find(f => f.id == userId);
+                await openDirectMessage(friendData);
+            });
+        });
+
+    } catch (error) {
+        console.error('Error rendering friends list:', error);
+        friendsListContainer.innerHTML = '<div>Error loading friends.</div>';
+    }
+}
+
+let currentDmFriend = null;
+
+async function openDirectMessage(friend) {
+    if (!friend) return;
+    currentDmFriend = friend;
+
+    const defaultContent = document.getElementById('default-content');
+    const dmChatSection = document.getElementById('dm-chat-section');
+    const dmChatHeader = document.getElementById('dm-chat-header');
+    const dmMessagesContainer = document.getElementById('dm-messages');
+
+    // Switch view
+    defaultContent.classList.remove('active');
+    dmChatSection.classList.add('active');
+
+    // Populate DM header
+    dmChatHeader.innerHTML = `
+        <div class="header-left">
+            <img src="${friend.avatar_url || DEFAULT_AVATAR}" alt="Avatar" class="header-avatar">
+            <h3>${friend.username}</h3>
+        </div>
+    `;
+
+    // Clear unread count and re-render friends list
+    if (friend.unread_count > 0) {
+        friend.unread_count = 0;
+        renderFriendsList();
+    }
+
+    // Fetch and render message history
+    dmMessagesContainer.innerHTML = '<div><i class="fas fa-spinner fa-spin"></i> Loading messages...</div>';
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+    try {
+        const response = await fetch(`/api/dm/${currentUser.id}/${friend.id}`);
+        const messages = await response.json();
+        renderDmMessages(messages, dmMessagesContainer, currentUser.id);
+
+        // Setup Intersection Observer for read receipts
+        setupReadReceiptObserver(currentUser.id);
+    } catch (error) {
+        console.error('Failed to fetch DM history:', error);
+        dmMessagesContainer.innerHTML = '<div>Error loading messages.</div>';
+    }
+}
+
+function renderDmMessages(messages, container, currentUserId) {
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<div class="chat-start">This is the beginning of your conversation.</div>';
+        return;
+    }
+    container.innerHTML = messages.map(msg => createMessageHTML(msg, currentUserId)).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendDmMessage(message, container, currentUserId) {
+    const messageEl = document.createElement('div');
+    // Set attributes for the wrapper div
+    messageEl.className = `message-item ${message.sender_id === currentUserId ? 'sent' : 'received'}`;
+    messageEl.id = `message-${message.id}`;
+    messageEl.dataset.messageId = message.id;
+
+    messageEl.innerHTML = createMessageHTML(message, currentUserId, true);
+    container.appendChild(messageEl);
+    container.scrollTop = container.scrollHeight;
+}
+
+function createMessageHTML(msg, currentUserId, isInner = false) {
+    const isSent = msg.sender_id === currentUserId;
+    const reactionsHTML = (msg.reactions || []).map(reaction => 
+        `<div class="reaction-item" data-emoji="${reaction.emoji}">${reaction.emoji} <span class="reaction-count">${reaction.count}</span></div>`
+    ).join('');
+
+    const html = `
+        <img src="${msg.sender.avatar_url || DEFAULT_AVATAR}" alt="Avatar" class="message-avatar">
+        <div class="message-content">
+            <div class="message-sender">${msg.sender.username}</div>
+            <div class="message-text">${msg.content} <span class="edited-indicator">${msg.edited ? '(edited)' : ''}</span></div>
+            <div class="message-reactions">${reactionsHTML}</div>
+            <div class="read-receipt ${isSent ? '' : 'hidden'} ${msg.read_at ? 'read' : ''}" data-message-id="${msg.id}">
+                <i class="fas fa-check-double"></i>
+            </div>
+        </div>
+        <div class="message-actions">
+            <button class="react-btn"><i class="far fa-smile"></i></button>
+            ${isSent ? `
+            <button class="edit-btn"><i class="fas fa-pencil-alt"></i></button>
+            <button class="delete-btn"><i class="fas fa-trash"></i></button>
+            ` : ''}
+        </div>
+    `;
+    if (isInner) return html;
+    return `<div class="message-item ${isSent ? 'sent' : 'received'}" id="message-${msg.id}" data-message-id="${msg.id}">${html}</div>`;
+}
+
 // Helper: Render members in the members-sidebar
 async function renderGroupMembersSidebar(groupId) {
     const sidebar = document.querySelector('.members-sidebar');
@@ -700,7 +1240,9 @@ async function handleGroupSelection(groupElement) {
 // Function to show group settings
 async function showGroupSettings(groupId) {
     try {
-        // Fetch group data
+        // Fetch initial messages and members
+        fetchGroupMessages(groupId);
+        fetchGroupMembers(groupId);
         const { data: group, error } = await supabase
             .from('groups')
             .select('*')
@@ -2095,6 +2637,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.classList.toggle('collapsed');
             if (section) {
                 section.classList.toggle('collapsed');
+                localStorage.setItem(`${sectionId}Collapsed`, section.classList.contains('collapsed'));
             }
         });
     });
@@ -2971,6 +3514,12 @@ async function handleFriendRequestResponse(fromUserId, accepted) {
       loadFriendsList();
     }
 
+    // Update button state
+    const addFriendBtn = document.getElementById('addFriendBtn');
+    if (addFriendBtn) {
+      updateFriendButtonState(currentUser.id, fromUserId, addFriendBtn);
+    }
+
   } catch (error) {
     createNotification({
       type: 'error',
@@ -3809,6 +4358,85 @@ async function renderReactions(messageId, container) {
         reactionEl.innerHTML = `<span class="emoji">${emoji}</span><span class="count">${userIds.length}</span>`;
         container.appendChild(reactionEl);
     }
+}
+
+// --- @MENTIONS LOGIC ---
+async function fetchGroupMembers(groupId) {
+    try {
+        const response = await fetch(`/api/groups/${groupId}/members`);
+        if (!response.ok) throw new Error('Failed to fetch group members');
+        currentGroupMembers = await response.json();
+    } catch (error) {
+        console.error(error);
+        currentGroupMembers = [];
+    }
+}
+
+function updateMentionsPopup(query) {
+    const userMentionsPopup = document.getElementById('userMentionsPopup');
+    if (!userMentionsPopup) return;
+
+    const filteredMembers = currentGroupMembers.filter(member =>
+        member && member.username && member.username.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (filteredMembers.length === 0) {
+        userMentionsPopup.style.display = 'none';
+        return;
+    }
+
+    userMentionsPopup.innerHTML = filteredMembers.map(member => `
+        <div class="mention-item" data-user-id="${member.id}" data-username="${member.username}">
+            <img src="${member.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+            <span class="username">${member.username}</span>
+        </div>
+    `).join('');
+    userMentionsPopup.style.display = 'block';
+}
+
+function setupMentionsListeners() {
+    const groupMessageInput = document.getElementById('groupMessageInput');
+    const userMentionsPopup = document.getElementById('userMentionsPopup');
+
+    if (!groupMessageInput || !userMentionsPopup) return;
+
+    groupMessageInput.addEventListener('input', () => {
+        const text = groupMessageInput.value;
+        const cursorPos = groupMessageInput.selectionStart;
+        const textBeforeCursor = text.slice(0, cursorPos);
+        const atMatch = textBeforeCursor.match(/@(\w*)$/);
+
+        if (atMatch) {
+            isMentionPopupOpen = true;
+            mentionQuery = atMatch[1];
+            updateMentionsPopup(mentionQuery);
+        } else {
+            isMentionPopupOpen = false;
+            userMentionsPopup.style.display = 'none';
+        }
+    });
+
+    userMentionsPopup.addEventListener('click', (e) => {
+        const item = e.target.closest('.mention-item');
+        if (item) {
+            const username = item.dataset.username;
+            const userId = item.dataset.userId;
+            const mentionText = `@[${username}](${userId}) `;
+
+            const text = groupMessageInput.value;
+            const cursorPos = groupMessageInput.selectionStart;
+            const textBefore = text.slice(0, cursorPos).replace(/@\w*$/, '');
+            const textAfter = text.slice(cursorPos);
+
+            groupMessageInput.value = textBefore + mentionText + textAfter;
+            userMentionsPopup.style.display = 'none';
+            isMentionPopupOpen = false;
+            groupMessageInput.focus();
+
+            const newCursorPos = (textBefore + mentionText).length;
+            groupMessageInput.setSelectionRange(newCursorPos, newCursorPos);
+        }
+    });
 }
 
 // --- EMOJI REACTIONS LOGIC ---
