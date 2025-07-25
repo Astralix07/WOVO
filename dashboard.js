@@ -3150,9 +3150,9 @@ async function loadGroupMessages(groupId) {
         `;
     }
     groupMessages.innerHTML = loaderHTML;
-    groupChatStart.style.display = 'none';
+  groupChatStart.style.display = 'none';
 
-    try {
+  try {
         const { data: messages, error } = await supabase
             .from('group_messages')
             .select('*, users(username, avatar_url), reply_to:reply_to_message_id(*, users(username, avatar_url))')
@@ -3164,17 +3164,17 @@ async function loadGroupMessages(groupId) {
         groupMessages.innerHTML = ''; // Clear the loader
 
         if (messages.length === 0) {
-            groupChatStart.style.display = 'block';
-        } else {
+      groupChatStart.style.display = 'block';
+    } else {
             messages.forEach(msg => renderGroupMessage(msg));
             // Defer scroll to bottom to allow images to load
             setTimeout(() => {
-                groupMessages.scrollTop = groupMessages.scrollHeight;
+      groupMessages.scrollTop = groupMessages.scrollHeight;
             }, 100);
-        }
+    }
     } catch (error) {
         groupMessages.innerHTML = '<div class="error-state">Failed to load messages.</div>';
-    }
+  }
 }
 
 function renderGroupMessage(msg, isNew = false) {
@@ -3186,8 +3186,8 @@ function renderGroupMessage(msg, isNew = false) {
         return;
     }
 
-    const msgDiv = document.createElement('div');
-    msgDiv.className = 'group-message';
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'group-message';
     msgDiv.dataset.messageId = msg.id;
 
     // Add animation for new messages
@@ -3237,17 +3237,17 @@ function renderGroupMessage(msg, isNew = false) {
     }
 
     // Build the final message HTML
-    msgDiv.innerHTML = `
-        <div class="group-message-avatar">
+  msgDiv.innerHTML = `
+    <div class="group-message-avatar">
             <img src="${msg.users?.avatar_url || DEFAULT_AVATAR}" alt="avatar">
-        </div>
-        <div class="group-message-content">
+    </div>
+    <div class="group-message-content">
             ${replyContextHtml}
-            <div class="group-message-header">
+      <div class="group-message-header">
                 <span class="group-message-username">${escapeHtml(msg.users?.username || 'User')}</span>
-                <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
+        <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
                 ${msg.is_edited ? '<span class="message-edited-tag">(edited)</span>' : ''}
-            </div>
+      </div>
             ${
                 msg.content
                 ? (
@@ -3257,9 +3257,9 @@ function renderGroupMessage(msg, isNew = false) {
                 )
                 : ''
             }
-        </div>
+    </div>
         ${messageActions}
-    `;
+  `;
 
     // Add media if it exists
     if (msg.media_url) {
@@ -3291,7 +3291,7 @@ function renderGroupMessage(msg, isNew = false) {
     reactionsContainer.className = 'message-reactions-container';
     reactionsContainer.dataset.messageId = msg.id;
     
-    groupMessages.appendChild(msgDiv);
+  groupMessages.appendChild(msgDiv);
     groupMessages.appendChild(reactionsContainer);
 
     // Render existing reactions, but only if it's not a temporary uploading message
@@ -3402,7 +3402,7 @@ async function enterGroupChat(groupId) {
                 renderGroupMessage(message, false);
             } else { // It's a new message
                 renderGroupMessage(message, true);
-                groupMessages.scrollTop = groupMessages.scrollHeight;
+  groupMessages.scrollTop = groupMessages.scrollHeight;
             }
         }
     })
@@ -3444,8 +3444,8 @@ async function sendMessage() {
     // Send to server via Socket.IO
     socket.emit('group_message_send', { 
         groupId: joinedGroupRoom, 
-        user_id: currentUser.id, 
-        content,
+      user_id: currentUser.id,
+      content,
         reply_to_message_id: currentReplyTo ? currentReplyTo.id : null
     });
 

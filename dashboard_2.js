@@ -271,4 +271,156 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- DIRECT MESSAGING LOGIC ---
+    const dmChatContainer = document.getElementById('dmChatContainer');
+    const dmMessages = document.getElementById('dmMessages');
+    const dmMessageForm = document.getElementById('dmMessageForm');
+    const dmMessageInput = document.getElementById('dmMessageInput');
+    const sendDmMessageBtn = document.getElementById('sendDmMessageBtn');
+    let currentDmSubscription = null;
+    let currentDmFriend = null;
+
+    async function enterDmChat(friend) {
+        if (!friend) return;
+        currentDmFriend = friend;
+
+        // Update UI
+        updateHeaderInfo(friend.username, 'Direct Message');
+        dmChatContainer.style.display = 'flex';
+        placeholderContent.style.display = 'none';
+        groupChatContainer.style.display = 'none';
+
+        // Load messages
+        await loadDms(friend.id);
+
+        // Subscribe to new DMs
+        if (currentDmSubscription) {
+            currentDmSubscription.unsubscribe();
+        }
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        currentDmSubscription = supabase
+            .channel(`dms_${currentUser.id}_${friend.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'direct_messages',
+                filter: `receiver_id=eq.${currentUser.id}`
+            }, payload => {
+                renderDm(payload.new);
+            })
+            .subscribe();
+    }
+
+    async function loadDms(friendId) {
+        dmMessages.innerHTML = 'Loading...';
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const { data, error } = await supabase
+            .from('direct_messages')
+            .select('*, sender:sender_id(*), receiver:receiver_id(*)')
+            .or(`(sender_id.eq.${currentUser.id},receiver_id.eq.${friendId}),(sender_id.eq.${friendId},receiver_id.eq.${currentUser.id})`)
+            .order('created_at', { ascending: true });
+        
+        dmMessages.innerHTML = '';
+        if (!error && data) {
+            data.forEach(msg => renderDm(msg));
+            dmMessages.scrollTop = dmMessages.scrollHeight;
+        }
+    }
+
+    function renderDm(msg) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'group-message'; // Re-use styling
+        msgDiv.innerHTML = `
+            <div class="group-message-avatar">
+                <img src="${msg.sender.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+            </div>
+            <div class="group-message-content">
+                <div class="group-message-header">
+                    <span class="group-message-username">${msg.sender.username}</span>
+                    <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
+                </div>
+                <div class="group-message-text">${escapeHtml(msg.content)}</div>
+            </div>
+        `;
+        dmMessages.appendChild(msgDiv);
+    }
+
+    if (sendDmMessageBtn) {
+        sendDmMessageBtn.addEventListener('click', sendDm);
+    }
+    if (dmMessageInput) {
+        dmMessageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendDm();
+            }
+        });
+    }
+
+    async function sendDm() {
+        const content = dmMessageInput.value.trim();
+        if (!content || !currentDmFriend) return;
+
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const { error } = await supabase.from('direct_messages').insert({
+            sender_id: currentUser.id,
+            receiver_id: currentDmFriend.id,
+            content: content
+        });
+
+        if (!error) {
+            renderDm({
+                sender: currentUser,
+                created_at: new Date().toISOString(),
+                content
+            });
+            dmMessageInput.value = '';
+            dmMessages.scrollTop = dmMessages.scrollHeight;
+        }
+    }
+
+    // --- NAVIGATION INTEGRATION ---
+    // Make all friends clickable for DMs
+    function setupFriendsListForDMs() {
+        const friendItems = document.querySelectorAll('.friend-item');
+        friendItems.forEach(item => {
+            item.addEventListener('click', async () => {
+                const username = item.querySelector('.friend-name').textContent;
+                // Fetch user by username (assuming usernames are unique)
+                const { data: friendData } = await supabase.from('users').select('*').eq('username', username).single();
+                if (friendData) {
+                    enterDmChat(friendData);
+                }
+            });
+        });
+    }
+
+    // Call this after the friends list is rendered
+    document.addEventListener('DOMContentLoaded', setupFriendsListForDMs);
+    // Also call after any dynamic update to the friends list
+    document.addEventListener('friendsListUpdated', setupFriendsListForDMs);
+
+    // Patch the navigation to show placeholder only if no friends
+    const friendsNavBtn = Array.from(document.querySelectorAll('.nav-item .nav-label'))
+        .find(el => el.textContent === 'Friends')?.parentElement;
+
+    if (friendsNavBtn) {
+        friendsNavBtn.addEventListener('click', async () => {
+            // Fetch all friends
+            const { data: friends, error } = await supabase
+                .from('friends')
+                .select('user_id_1, user_id_2');
+
+            if (!error && friends.length > 0) {
+                // Do nothing here; clicking a friend will open the DM
+            } else {
+                // Show placeholder if no friends
+                placeholderContent.style.display = 'flex';
+                dmChatContainer.style.display = 'none';
+                groupChatContainer.style.display = 'none';
+                updateHeaderInfo('Friends', 'No friends yet');
+            }
+        });
+    }
 }); 
