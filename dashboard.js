@@ -50,6 +50,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Main sidebar navigation
+    const navItems = document.querySelectorAll('.sidebar-top .nav-item');
+    const detailSections = document.querySelectorAll('.details-sidebar .details-section');
+    const mainContent = document.getElementById('default-content');
+    const contentTitle = document.getElementById('content-title');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const target = item.dataset.target;
+
+            // Update nav item active state
+            navItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+
+            // Update details sidebar sections
+            detailSections.forEach(section => {
+                if (section.id === target) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
+                }
+            });
+
+            // Update main content area
+            const groupChatContainer = document.getElementById('groupChatContainer');
+            const friendsContent = document.getElementById('friends-content'); // Assuming you'll create this
+
+            if (target === 'groups-section') {
+                contentTitle.textContent = 'ALL INDIA'; // Or the active group
+                if(groupChatContainer) groupChatContainer.style.display = 'flex';
+                if(friendsContent) friendsContent.style.display = 'none';
+            } else if (target === 'friends-section') {
+                contentTitle.textContent = 'Friends';
+                if(groupChatContainer) groupChatContainer.style.display = 'none';
+                // You would show friends-related content here
+                // For now, let's just clear the main content
+                if(friendsContent) friendsContent.style.display = 'block';
+                 else {
+                    mainContent.querySelector('.content-container').innerHTML = '<div id="friends-content" style="padding: 20px;">Friend content goes here.</div>';
+                }
+            } else {
+                // Handle other sections similarly
+                contentTitle.textContent = item.querySelector('.nav-label').textContent;
+                if(groupChatContainer) groupChatContainer.style.display = 'none';
+                if(friendsContent) friendsContent.style.display = 'none';
+                mainContent.querySelector('.content-container').innerHTML = `<div style="padding: 20px;">${item.querySelector('.nav-label').textContent} content goes here.</div>`;
+            }
+        });
+    });
+
     // Initialize section toggles
     const toggleButtons = document.querySelectorAll('.toggle-section');
     if (toggleButtons) {
