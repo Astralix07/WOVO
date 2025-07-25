@@ -8,6 +8,36 @@ const CLOUDINARY_CLOUD_NAME = 'dxsvbes6q'; // Replace with your cloud name
 const CLOUDINARY_UPLOAD_PRESET = 'wovo_user'; // Replace with your unsigned upload preset
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- CONTENT SWITCHING LOGIC ---
+    const mainSections = {
+        groups: document.getElementById('groups-content'),
+        friends: document.getElementById('friends-content'),
+        tournaments: document.getElementById('tournaments-content'),
+        rooms: document.getElementById('rooms-content'),
+    };
+    const navItems = document.querySelectorAll('.nav-item');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Remove active from all
+            navItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+
+            // Hide all main sections
+            Object.values(mainSections).forEach(sec => sec && (sec.style.display = 'none'));
+
+            // Show the correct section
+            const label = item.querySelector('.nav-label')?.textContent?.toLowerCase();
+            if (label && mainSections[label]) {
+                mainSections[label].style.display = '';
+                mainSections[label].classList.add('active');
+            } else if (label === 'groups') {
+                mainSections.groups.style.display = '';
+                mainSections.groups.classList.add('active');
+            }
+        });
+    });
+
     // --- MEDIA SHARING LOGIC ---
     const addAttachmentBtn = document.getElementById('addAttachmentBtn');
     const mediaFileInput = document.getElementById('mediaFileInput');

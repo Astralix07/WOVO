@@ -271,8 +271,9 @@
 
         <!-- Main Content Area -->
         <main class="content-area">
-            <!-- Default Content -->
-            <div class="main-content-section active" id="default-content">
+            <!-- Groups Content -->
+            <div class="main-content-section active" id="groups-content">
+                <!-- Existing group chat content here -->
                 <header class="content-header">
                     <div class="header-left">
                         <span class="channel-hashtag">#</span>
@@ -311,12 +312,53 @@
                             <div class="user-mentions-popup" id="userMentionsPopup" style="display: none;"></div>
                             <div class="message-input-container">
                                 <button type="button" id="addAttachmentBtn"><i class="fas fa-plus-circle"></i></button>
-                            <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
+                                <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
                                 <button type="button" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
                             </div>
                         </form>
                     </div>
-                    <!-- Friends, Tournaments, and Rooms content remain as separate sections, not shown when in group chat -->
+                </div>
+            </div>
+
+            <!-- Friends Content -->
+            <div class="main-content-section" id="friends-content" style="display: none;">
+                <header class="content-header">
+                    <div class="header-left">
+                        <span class="channel-hashtag">@</span>
+                        <h3 id="friends-title">Friends</h3>
+                    </div>
+                </header>
+                <div class="content-container">
+                    <div class="friend-detail-container">
+                        <div class="friend-detail-header">First Friend (Demo)</div>
+                        <div class="coming-soon">Coming Soon: Friend chat and details will appear here.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tournaments Content -->
+            <div class="main-content-section" id="tournaments-content" style="display: none;">
+                <header class="content-header">
+                    <div class="header-left">
+                        <span class="channel-hashtag">🏆</span>
+                        <h3 id="tournaments-title">Tournaments</h3>
+                    </div>
+                </header>
+                <div class="content-container">
+                    <div class="coming-soon">Coming Soon: Tournaments content will appear here.</div>
+                </div>
+            </div>
+
+            <!-- Custom Rooms Content -->
+            <div class="main-content-section" id="rooms-content" style="display: none;">
+                <header class="content-header">
+                    <div class="header-left">
+                        <span class="channel-hashtag">🎮</span>
+                        <h3 id="rooms-title">Custom Rooms</h3>
+                    </div>
+                </header>
+                <div class="content-container">
+                    <div class="coming-soon">Coming Soon: Custom rooms content will appear here.</div>
                 </div>
             </div>
 
