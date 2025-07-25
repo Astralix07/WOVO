@@ -82,6 +82,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Main sidebar navigation
+    const navItems = document.querySelectorAll('.sidebar-top .nav-item');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Remove active class from all nav items
+            navItems.forEach(i => i.classList.remove('active'));
+            // Add active class to the clicked item
+            item.classList.add('active');
+
+            const targetDetailsId = item.dataset.targetDetails;
+            const targetContentId = item.dataset.targetContent;
+
+            // Hide all detail and content sections
+            document.querySelectorAll('.details-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.main-content-section').forEach(s => s.classList.remove('active'));
+
+            // Show the target sections
+            if (targetDetailsId) {
+                const targetDetails = document.getElementById(targetDetailsId);
+                if (targetDetails) targetDetails.classList.add('active');
+            }
+            if (targetContentId) {
+                const targetContent = document.getElementById(targetContentId);
+                if (targetContent) targetContent.classList.add('active');
+            }
+        });
+    });
+
+
     // Initialize settings categories
     if (settingsCategories.length && settingsSections.length) {
         settingsCategories.forEach(category => {

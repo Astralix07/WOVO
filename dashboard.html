@@ -20,22 +20,22 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 
-                <div class="nav-item active">
+                <div class="nav-item active" data-target-details="groups-section" data-target-content="default-content">
                     <i class="fas fa-users"></i>
                     <span class="nav-label">Groups</span>
                 </div>
                 
-                <div class="nav-item">
+                <div class="nav-item" data-target-details="friends-section" data-target-content="friends-content-section">
                     <i class="fas fa-user-friends"></i>
                     <span class="nav-label">Friends</span>
                 </div>
                 
-                <div class="nav-item">
+                <div class="nav-item" data-target-details="tournaments-section" data-target-content="tournaments-content-section">
                     <i class="fas fa-trophy"></i>
                     <span class="nav-label">Tournaments</span>
                 </div>
                 
-                <div class="nav-item">
+                <div class="nav-item" data-target-details="custom-rooms-section" data-target-content="custom-rooms-content-section">
                     <i class="fas fa-gamepad"></i>
                     <span class="nav-label">Custom Rooms</span>
                 </div>
@@ -273,6 +273,39 @@
         <main class="content-area">
             <!-- Default Content -->
             <div class="main-content-section active" id="default-content">
+
+            <div class="main-content-section" id="friends-content-section">
+                <header class="content-header">
+                    <div class="header-left">
+                        <span class="channel-hashtag">@</span>
+                        <h3 id="content-title">friend_username</h3>
+                    </div>
+                </header>
+                <div class="chat-area">
+                    <div class="coming-soon-message">
+                        <h2>Coming Soon!</h2>
+                        <p>Direct messaging is under construction. Stay tuned!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-content-section" id="tournaments-content-section">
+                <div class="chat-area">
+                    <div class="coming-soon-message">
+                        <h2>Coming Soon!</h2>
+                        <p>Tournaments are under construction. Stay tuned!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-content-section" id="custom-rooms-content-section">
+                <div class="chat-area">
+                    <div class="coming-soon-message">
+                        <h2>Coming Soon!</h2>
+                        <p>Custom Rooms are under construction. Stay tuned!</p>
+                    </div>
+                </div>
+            </div>
                 <header class="content-header">
                     <div class="header-left">
                         <span class="channel-hashtag">#</span>
