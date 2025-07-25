@@ -107,6 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetContentId) {
                 const targetContent = document.getElementById(targetContentId);
                 if (targetContent) targetContent.classList.add('active');
+
+                if (targetContentId === 'friends-content-section') {
+                    fetchAndDisplayFriends();
+                }
             }
         });
     });
@@ -3751,6 +3755,60 @@ async function editMessage(messageId, newContent) {
 
     if (error) {
         showNotification('Failed to edit message', 'error');
+    }
+}
+
+// Function to fetch and display friends
+async function fetchAndDisplayFriends() {
+    const friendsContent = document.getElementById('friends-content-section');
+    const contentTitle = friendsContent.querySelector('#content-title');
+    const chatArea = friendsContent.querySelector('.chat-area');
+    const currentUser = JSON.parse(localStorage.getItem('wovo_user') || '{}');
+
+    if (!currentUser.id) {
+        chatArea.innerHTML = `<div class="coming-soon-message"><h2>Error</h2><p>Could not identify current user.</p></div>`;
+        return;
+    }
+
+    try {
+        // Fetch friend relationships
+        const { data: friends, error } = await supabase
+            .from('friends')
+            .select('user_id_1, user_id_2')
+            .or(`user_id_1.eq.${currentUser.id},user_id_2.eq.${currentUser.id}`)
+            .eq('status', 'accepted');
+
+        if (error) throw error;
+
+        if (friends.length === 0) {
+            contentTitle.textContent = 'Friends';
+            chatArea.innerHTML = `<div class="coming-soon-message"><h2>No Friends Yet!</h2><p>Use the 'Add Friend' button to connect with others.</p></div>`;
+            return;
+        }
+
+        const friendIds = friends.map(f => f.user_id_1 === currentUser.id ? f.user_id_2 : f.user_id_1);
+
+        // Fetch friend user data
+        const { data: friendUsers, error: userError } = await supabase
+            .from('users')
+            .select('id, username')
+            .in('id', friendIds);
+
+        if (userError) throw userError;
+
+        if (friendUsers.length > 0) {
+            const firstFriend = friendUsers[0];
+            contentTitle.textContent = firstFriend.username;
+            chatArea.innerHTML = `<div class="coming-soon-message"><h2>Connecting...</h2><p>WE ARE WORKING ON CONNECTING YOU AND ${firstFriend.username.toUpperCase()}. PLEASE BE PATIENT.</p></div>`;
+        } else {
+             contentTitle.textContent = 'Friends';
+            chatArea.innerHTML = `<div class="coming-soon-message"><h2>No Friends Yet!</h2><p>Use the 'Add Friend' button to connect with others.</p></div>`;
+        }
+
+    } catch (error) {
+        console.error('Error fetching friends:', error);
+        contentTitle.textContent = 'Friends';
+        chatArea.innerHTML = `<div class="coming-soon-message"><h2>Error</h2><p>Could not load friends list. Please try again later.</p></div>`;
     }
 }
 
