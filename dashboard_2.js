@@ -413,7 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 .select('user_id_1, user_id_2');
 
             if (!error && friends.length > 0) {
-                // Do nothing here; clicking a friend will open the DM
+                // Automatically open DM with the first friend
+                const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+                const friendId = friends[0].user_id_1 === currentUser.id ? friends[0].user_id_2 : friends[0].user_id_1;
+                const { data: friendData } = await supabase.from('users').select('*').eq('id', friendId).single();
+                if (friendData) {
+                    enterDmChat(friendData);
+                }
             } else {
                 // Show placeholder if no friends
                 placeholderContent.style.display = 'flex';
