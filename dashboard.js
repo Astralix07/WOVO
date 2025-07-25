@@ -3480,21 +3480,8 @@ async function enterGroupChat(groupId) {
 
 // Send message
 if (groupMessageForm) {
-  groupMessageForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    sendMessage();
-  });
-
-  sendGroupMessageBtn.addEventListener('click', sendMessage);
-  
-  groupMessageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-      }
-  });
-}
-
+    sendGroupMessageBtn.addEventListener('click', sendMessage);
+  }
 // Function to send a message
 async function sendMessage() {
     const content = groupMessageInput.value.trim();

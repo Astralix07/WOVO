@@ -246,7 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle keyboard navigation for mentions
     if (groupMessageInput) {
         groupMessageInput.addEventListener('keydown', (e) => {
-            if (userMentionsPopup.style.display === 'block') {
+            const isMentionPopupVisible = userMentionsPopup.style.display === 'block';
+
+            if (isMentionPopupVisible) {
                 const items = userMentionsPopup.querySelectorAll('.mention-item');
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -259,6 +261,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (e.key === 'Enter' || e.key === 'Tab') {
                     e.preventDefault();
                     selectMention(items[selectedMentionIndex]);
+                }
+            } else {
+                // This is the logic from the other file, now integrated
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
                 }
             }
         });

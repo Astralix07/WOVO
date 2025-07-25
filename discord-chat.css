@@ -139,7 +139,7 @@
 }
 #sendGroupMessageBtn:hover {
   background: var(--accent-hover);
-}
+} 
 
 #addAttachmentBtn {
     background: none;
