@@ -354,7 +354,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 (m.sender_id === friendId && m.receiver_id === currentUser.id)
             ).map(m => ({
                 text: m.content,
-                isOwn: m.sender_id === currentUser.id
+                isOwn: m.sender_id === currentUser.id,
+                username: m.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
+                avatar_url: m.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
+                created_at: m.created_at
             }));
         }
     }
@@ -364,8 +367,17 @@ document.addEventListener('DOMContentLoaded', () => {
         friendMessages.innerHTML = chat.length === 0
             ? '<div class="coming-soon">No messages yet. Start the conversation!</div>'
             : chat.map(msg => `
-                <div class="friend-message-row ${msg.isOwn ? 'own' : ''}">
-                    <div class="friend-message-bubble">${escapeHtml(msg.text)}</div>
+                <div class="group-message${msg.isOwn ? ' own' : ''}">
+                    <div class="group-message-avatar">
+                        <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
+                    </div>
+                    <div class="group-message-content">
+                        <div class="group-message-header">
+                            <span class="group-message-username">${escapeHtml(msg.username || selectedFriend.username)}</span>
+                            <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
+                        </div>
+                        <div class="group-message-text">${escapeHtml(msg.text)}</div>
+                    </div>
                 </div>
             `).join('');
         friendMessages.scrollTop = friendMessages.scrollHeight;
@@ -395,13 +407,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Real-time receive
     if (window.socket) {
+        socket.off('friend_message'); // Remove previous listener to avoid duplicates
         socket.on('friend_message', data => {
             const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
             const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
             if (!friendChats[friendId]) friendChats[friendId] = [];
             friendChats[friendId].push({
                 text: data.content,
-                isOwn: data.sender_id === currentUser.id
+                isOwn: data.sender_id === currentUser.id,
+                username: data.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
+                avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
+                created_at: data.created_at
             });
             if (selectedFriend && selectedFriend.id === friendId) {
                 renderFriendMessages();
@@ -421,9 +437,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach listeners when entering Friends section
     document.querySelector('.nav-item .fa-user-friends')?.closest('.nav-item')?.addEventListener('click', () => {
-        setTimeout(attachRealFriendsListeners, 300);
-        // Optionally, select the first friend by default
-        const firstFriend = realFriendsList?.querySelector('.friend-item');
-        if (firstFriend) firstFriend.click();
+        setTimeout(() => {
+            attachRealFriendsListeners();
+            // Select the first real friend by default
+            const firstFriend = realFriendsList?.querySelector('.friend-item');
+            if (firstFriend) firstFriend.click();
+        }, 300);
     });
 }); 
