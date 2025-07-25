@@ -3842,7 +3842,18 @@ function renderFriendsList(friends) {
 
             contentTitle.textContent = friendName;
             headerAvatar.src = friendAvatar;
-            chatArea.innerHTML = `<div class="coming-soon-message"><h2>Connecting...</h2><p>WE ARE WORKING ON CONNECTING YOU AND ${friendName.toUpperCase()}. PLEASE BE PATIENT.</p></div>`;
+            // Dispatch a custom event with friend details
+            const friendSelectedEvent = new CustomEvent('friendSelected', {
+                detail: {
+                    id: item.dataset.friendId,
+                    username: friendName,
+                    avatar_url: friendAvatar
+                }
+            });
+            document.dispatchEvent(friendSelectedEvent);
+
+            // Clear the chat area initially
+            chatArea.innerHTML = '';
         });
     });
 

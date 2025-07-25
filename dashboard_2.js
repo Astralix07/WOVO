@@ -271,4 +271,90 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- DIRECT MESSAGING (DM) LOGIC ---
+    let currentDmRecipient = null;
+    const dmForm = document.getElementById('dm-form');
+    const dmInput = document.getElementById('dm-input');
+    const dmMessagesContainer = document.getElementById('dm-messages');
+
+    // Listen for the event from dashboard.js
+    document.addEventListener('friendSelected', (e) => {
+        const friend = e.detail;
+        currentDmRecipient = friend;
+        loadDirectMessages(friend.id);
+    });
+
+    async function loadDirectMessages(friendId) {
+        if (!dmMessagesContainer) return;
+        dmMessagesContainer.innerHTML = '<div class="skeleton-messages"></div>'; // Show loader
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+
+        const response = await fetch(`/api/dms/${currentUser.id}/${friendId}`);
+        const messages = await response.json();
+
+        dmMessagesContainer.innerHTML = ''; // Clear loader
+        if (messages && messages.length > 0) {
+            messages.forEach(msg => renderDirectMessage(msg));
+        } else {
+            dmMessagesContainer.innerHTML = `<div class="chat-area-placeholder"><h3>No messages yet</h3><p>Be the first to say something!</p></div>`;
+        }
+        dmMessagesContainer.scrollTop = dmMessagesContainer.scrollHeight;
+    }
+
+    function renderDirectMessage(msg) {
+        if (!currentDmRecipient) return;
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const isSender = msg.sender_id === currentUser.id;
+
+        // Clear placeholder if it exists
+        const placeholder = dmMessagesContainer.querySelector('.chat-area-placeholder');
+        if (placeholder) placeholder.remove();
+
+        const messageElement = document.createElement('div');
+        messageElement.className = `group-message ${isSender ? 'sent' : 'received'}`;
+        
+        const avatar = isSender ? currentUser.avatar_url : currentDmRecipient.avatar_url;
+        const username = isSender ? currentUser.username : currentDmRecipient.username;
+
+        messageElement.innerHTML = `
+            <div class="group-message-avatar">
+                <img src="${avatar || './assets/default-avatar.png'}" alt="avatar">
+            </div>
+            <div class="group-message-content">
+                <div class="group-message-header">
+                    <span class="group-message-username">${username}</span>
+                    <span class="group-message-timestamp">${new Date(msg.created_at).toLocaleTimeString()}</span>
+                </div>
+                <div class="group-message-text">${msg.content}</div>
+            </div>
+        `;
+        dmMessagesContainer.appendChild(messageElement);
+        dmMessagesContainer.scrollTop = dmMessagesContainer.scrollHeight;
+    }
+
+    // Handle sending a DM
+    if (dmForm) {
+        dmForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const content = dmInput.value.trim();
+            if (content && currentDmRecipient) {
+                const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+                const messageData = {
+                    sender_id: currentUser.id,
+                    receiver_id: currentDmRecipient.id,
+                    content: content
+                };
+                socket.emit('send_dm', messageData);
+                dmInput.value = '';
+            }
+        });
+    }
+
+    // Listen for incoming DMs
+    socket.on('incoming_dm', (msg) => {
+        if (currentDmRecipient && (msg.sender_id === currentDmRecipient.id || msg.receiver_id === currentDmRecipient.id)) {
+            renderDirectMessage(msg);
+        }
+    });
 }); 

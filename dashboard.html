@@ -328,10 +328,17 @@
                         <h3 id="content-title">Friends</h3>
                     </div>
                 </header>
-                <div class="chat-area">
-                    <div class="coming-soon-message">
-                        <h2>Coming Soon!</h2>
-                        <p>Direct messaging is under construction. Stay tuned!</p>
+                <div class="chat-area group-chat-container" id="dm-chat-container">
+                    <div class="group-messages" id="dm-messages"></div>
+                    <div class="group-message-form-container">
+                        <form class="group-message-form" id="dm-form">
+                            <div class="message-input-container">
+                                <input type="text" id="dm-input" placeholder="Message..." autocomplete="off">
+                            </div>
+                            <button type="submit" id="send-dm-btn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
