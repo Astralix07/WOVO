@@ -449,6 +449,102 @@
     align-items: center;
 }
 
+.friend-content-container {
+    display: flex;
+    height: 100%;
+    flex-grow: 1;
+}
+
+.friend-chat-area {
+    flex-grow: 1;
+    /* Placeholder styling */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.members-sidebar {
+    width: 240px;
+    min-width: 240px;
+    background-color: var(--background-secondary);
+    padding: 1rem;
+    overflow-y: auto;
+    border-left: 1px solid var(--border-color);
+}
+
+.profile-card {
+    background-color: var(--background-primary);
+    border-radius: 8px;
+}
+
+.profile-banner {
+    height: 60px;
+    background-color: var(--accent-primary);
+    border-radius: 8px 8px 0 0;
+}
+
+.profile-avatar-container {
+    position: relative;
+    margin-top: -40px;
+    padding-left: 1rem;
+}
+
+#profile-sidebar-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 4px solid var(--background-primary);
+}
+
+.profile-avatar-container .status-indicator {
+    position: absolute;
+    bottom: 8px;
+    right: 130px; /* Adjust as needed */
+    border: 3px solid var(--background-primary);
+    width: 18px;
+    height: 18px;
+}
+
+.profile-info {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 1px solid var(--background-tertiary);
+}
+
+.profile-info h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.profile-info .user-tag {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.profile-actions {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.btn-secondary {
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    width: 100%;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-secondary:hover {
+    background-color: var(--background-modifier-hover);
+}
+
 /* Reply UI styles */
 .reply-context {
   display: flex;

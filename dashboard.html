@@ -328,11 +328,30 @@
                         <h3 id="friends-title">Friends</h3>
                     </div>
                 </header>
-                <div class="content-container">
-                    <div class="friend-detail-container">
-                        <div class="friend-detail-header">First Friend (Demo)</div>
-                        <div class="coming-soon">Coming Soon: Friend chat and details will appear here.</div>
+                <div class="content-container friend-content-container">
+                    <!-- Friend Chat Area -->
+                    <div class="friend-chat-area">
+                        <div class="coming-soon">Friend chat will be implemented here.</div>
                     </div>
+
+                    <!-- Member/Friend Profile Sidebar -->
+                    <aside class="members-sidebar" id="friend-profile-sidebar">
+                        <div class="profile-card">
+                            <div class="profile-banner"></div>
+                            <div class="profile-avatar-container">
+                                <img src="assets/default-avatar.png" alt="User Avatar" id="profile-sidebar-avatar">
+                                <div class="status-indicator online"></div>
+                            </div>
+                            <div class="profile-info">
+                                <h4 id="profile-sidebar-username">Username</h4>
+                                <p class="user-tag">username#0000</p>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="btn-secondary">Remove Friend</button>
+                                <button class="btn-secondary">Block</button>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </div>
 
