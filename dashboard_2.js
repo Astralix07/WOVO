@@ -313,6 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const friendMessageForm = document.getElementById('friendMessageForm');
     const friendMessageInput = document.getElementById('friendMessageInput');
     const sendFriendMessageBtn = document.getElementById('sendFriendMessageBtn');
+    const emojiPickerContainer = document.getElementById('emojiPickerContainer');
+    const emojiPicker = document.getElementById('emojiPicker');
 
     let selectedFriend = null;
     let friendChats = {};
@@ -353,6 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 (m.sender_id === currentUser.id && m.receiver_id === friendId) ||
                 (m.sender_id === friendId && m.receiver_id === currentUser.id)
             ).map(m => ({
+                id: m.id,
                 text: m.content,
                 isOwn: m.sender_id === currentUser.id,
                 username: m.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
@@ -362,11 +365,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Update renderFriendMessages to show reactions
     function renderFriendMessages() {
         const chat = friendChats[selectedFriend.id] || [];
         friendMessages.innerHTML = chat.length === 0
             ? '<div class="coming-soon">No messages yet. Start the conversation!</div>'
-            : chat.map(msg => `
+            : chat.map(msg => {
+                let reactionsHTML = '';
+                if (msg.reactions) {
+                    reactionsHTML = Object.entries(msg.reactions).map(([emoji, userIds]) => {
+                        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+                        const reacted = userIds.includes(currentUser.id);
+                        return `<span class="reaction${reacted ? ' reacted' : ''}" data-emoji="${emoji}">${emoji} <span class="count">${userIds.length}</span></span>`;
+                    }).join('');
+                }
+                return `
                 <div class="group-message${msg.isOwn ? ' own' : ''} new-message-animation" data-message-id="${msg.id}">
                     <div class="group-message-avatar">
                         <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
@@ -383,10 +396,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
                             <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
                         </div>
-                        <div class="message-reactions-container" data-message-id="${msg.id}"></div>
+                        <div class="message-reactions-container" data-message-id="${msg.id}">${reactionsHTML}</div>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         friendMessages.scrollTop = friendMessages.scrollHeight;
     }
 
@@ -401,6 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DM MESSAGE ACTIONS (REPLY, EDIT, DELETE, REACTIONS) ---
     let currentDMReplyTo = null;
     let editingDMMessageId = null;
+    let currentDMReactionMsgId = null;
 
     // Handle message actions
     friendMessages.addEventListener('click', function(e) {
@@ -430,15 +445,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Reaction
         else if (e.target.closest('.action-btn-icon.add-reaction')) {
-            // For demo: react with 👍
-            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-            socket.emit('friend_message_reaction', {
-                message_id: messageId,
-                user_id: currentUser.id,
-                emoji: '👍',
-                action: 'add'
-            });
+            currentDMReactionMsgId = messageId;
+            // Show emoji picker near the button
+            const rect = e.target.getBoundingClientRect();
+            emojiPickerContainer.style.top = `${rect.top - 360}px`;
+            emojiPickerContainer.style.left = `${rect.left - 300}px`;
+            emojiPickerContainer.style.display = 'block';
         }
+    });
+
+    // Handle emoji selection for DM reactions
+    emojiPicker?.addEventListener('emoji-click', async e => {
+        if (!currentDMReactionMsgId) return;
+        const emoji = e.detail.unicode;
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        socket.emit('friend_message_reaction', {
+            message_id: currentDMReactionMsgId,
+            user_id: currentUser.id,
+            emoji,
+            action: 'add'
+        });
+        emojiPickerContainer.style.display = 'none';
+        currentDMReactionMsgId = null;
     });
 
     // Send or edit or reply
@@ -478,7 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.socket) {
         socket.off('friend_message_update');
         socket.on('friend_message_update', data => {
-            const friendId = data.sender_id === selectedFriend.id ? data.sender_id : data.receiver_id;
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+            const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
             // Update the message in chat
             if (friendChats[friendId]) {
                 const idx = friendChats[friendId].findIndex(m => m.id === data.id);
@@ -496,15 +525,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         socket.off('friend_message_reaction_update');
         socket.on('friend_message_reaction_update', ({ message_id, emoji, user_id, action }) => {
-            // For demo: just show emoji as text (implement full UI as needed)
-            const msgEl = friendMessages.querySelector(`.group-message[data-message-id="${message_id}"] .message-reactions-container`);
-            if (msgEl) {
-                if (action === 'add') {
-                    msgEl.innerHTML = `<span>${emoji}</span>`;
-                } else {
-                    msgEl.innerHTML = '';
-                }
+            // Track reactions per message
+            if (!friendChats[selectedFriend.id]) return;
+            const msg = friendChats[selectedFriend.id].find(m => m.id === message_id);
+            if (!msg) return;
+            msg.reactions = msg.reactions || {};
+            msg.reactions[emoji] = msg.reactions[emoji] || [];
+            if (action === 'add') {
+                if (!msg.reactions[emoji].includes(user_id)) msg.reactions[emoji].push(user_id);
+            } else if (action === 'remove') {
+                msg.reactions[emoji] = msg.reactions[emoji].filter(id => id !== user_id);
             }
+            renderFriendMessages();
         });
     }
 
