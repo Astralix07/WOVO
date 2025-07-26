@@ -436,6 +436,19 @@
     color: var(--text-muted);
 }
 
+.header-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+}
+
+.content-header .header-left {
+    display: flex;
+    align-items: center;
+}
+
 /* Reply UI styles */
 .reply-context {
   display: flex;

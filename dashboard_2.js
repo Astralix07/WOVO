@@ -58,8 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Activate the first friend and update the header
                 firstFriend.classList.add('active');
                 const friendName = firstFriend.querySelector('.friend-name')?.textContent;
+                const friendAvatarSrc = firstFriend.querySelector('img')?.src;
+                const headerAvatar = document.getElementById('friend-header-avatar');
+
                 if (friendName && friendsTitle) {
                     friendsTitle.textContent = friendName;
+                }
+                if (friendAvatarSrc && headerAvatar) {
+                    headerAvatar.src = friendAvatarSrc;
                 }
                 observer.disconnect(); // We're done, so disconnect
             }
@@ -100,9 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Update header
             const friendName = clickedFriend.querySelector('.friend-name')?.textContent;
+            const friendAvatarSrc = clickedFriend.querySelector('img')?.src;
             const friendsTitle = document.getElementById('friends-title');
+            const headerAvatar = document.getElementById('friend-header-avatar');
+
             if (friendName && friendsTitle) {
                 friendsTitle.textContent = friendName;
+            }
+            if (friendAvatarSrc && headerAvatar) {
+                headerAvatar.src = friendAvatarSrc;
             }
         });
     }
