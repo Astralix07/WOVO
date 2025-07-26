@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filePreviewContainer = document.getElementById('filePreviewContainer');
     const mediaCaptionInput = document.getElementById('mediaCaptionInput');
 
+
     let selectedFile = null;
 
     if (addAttachmentBtn) {
@@ -488,11 +489,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (friendMessageForm) {
-        friendMessageForm.addEventListener('submit', e => {
+        friendMessageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             sendFriendMessage();
         });
+
         sendFriendMessageBtn.addEventListener('click', sendFriendMessage);
+
+        friendMessageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendFriendMessage();
+            }
+        });
     }
 
     // --- DM MESSAGE ACTIONS (REPLY, EDIT, DELETE, REACTIONS) ---
