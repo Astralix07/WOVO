@@ -46,21 +46,6 @@ app.get('/api/groups/:groupId/messages', async (req, res) => {
 });
 
 // Post a new message to a group
-// Get messages for a friend
-app.get('/api/friends/:userId/messages', async (req, res) => {
-  const { userId } = req.params;
-  const currentUserId = req.query.currentUserId; // Passed from client
-
-  const { data, error } = await supabase
-    .from('friend_messages')
-    .select('*, sender:sender_id(username, avatar_url), reply_to:reply_to_message_id(*, sender:sender_id(username, avatar_url))')
-    .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${userId}),(sender_id.eq.${userId},receiver_id.eq.${currentUserId})`)
-    .order('created_at', { ascending: true });
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
 app.post('/api/groups/:groupId/messages', async (req, res) => {
   const { groupId } = req.params;
   const { user_id, content } = req.body;
@@ -178,134 +163,19 @@ io.on('connection', (socket) => {
           content: msg.content
         }
       ])
-      .select('*, sender:sender_id(username, avatar_url)')
+      .select('*')
       .single();
     if (error) {
       if (callback) callback({ status: 'error', message: error.message });
       return;
     }
-
+    // Emit to sender
+    socket.emit('friend_message', data);
     // Emit to receiver if online
     const toSocketId = connectedUsers.get(msg.receiver_id);
     if (toSocketId) {
       io.to(toSocketId).emit('friend_message', data);
     }
-    if (callback) callback({ status: 'ok' });
-  });
-
-  // --- DM EDIT ---
-  socket.on('friend_message_edit', async (msg, callback) => {
-    // msg: { message_id, new_content }
-    const { message_id, new_content } = msg;
-    if (!message_id || !new_content) {
-      if (callback) callback({ status: 'error', message: 'Missing data' });
-      return;
-    }
-    const { data, error } = await supabase
-      .from('friend_messages')
-      .update({ content: new_content, is_edited: true })
-      .eq('id', message_id)
-      .select('*')
-      .single();
-    if (error) {
-      if (callback) callback({ status: 'error', message: error.message });
-      return;
-    }
-    // Notify both users
-    socket.emit('friend_message_update', data);
-    const toSocketId = connectedUsers.get(data.receiver_id);
-    if (toSocketId) io.to(toSocketId).emit('friend_message_update', data);
-    if (callback) callback({ status: 'ok' });
-  });
-
-  // --- DM DELETE ---
-  socket.on('friend_message_delete', async (msg, callback) => {
-    // msg: { message_id }
-    const { message_id } = msg;
-    if (!message_id) {
-      if (callback) callback({ status: 'error', message: 'Missing data' });
-      return;
-    }
-    const { data, error } = await supabase
-      .from('friend_messages')
-      .update({ is_deleted: true, content: '(message deleted)' })
-      .eq('id', message_id)
-      .select('*')
-      .single();
-    if (error) {
-      if (callback) callback({ status: 'error', message: error.message });
-      return;
-    }
-    socket.emit('friend_message_update', data);
-    const toSocketId = connectedUsers.get(data.receiver_id);
-    if (toSocketId) io.to(toSocketId).emit('friend_message_update', data);
-    if (callback) callback({ status: 'ok' });
-  });
-
-  // --- DM REACTION ---
-  socket.on('friend_message_reaction', async (msg, callback) => {
-    // msg: { message_id, user_id, emoji, action: 'add' | 'remove' }
-    const { message_id, user_id, emoji, action } = msg;
-    if (!message_id || !user_id || !emoji || !action) {
-      if (callback) callback({ status: 'error', message: 'Missing data' });
-      return;
-    }
-    let data, error;
-    if (action === 'add') {
-      ({ data, error } = await supabase
-        .from('friend_message_reactions')
-        .insert([{ message_id, user_id, emoji }])
-        .select('*')
-        .single());
-    } else if (action === 'remove') {
-      ({ data, error } = await supabase
-        .from('friend_message_reactions')
-        .delete()
-        .eq('message_id', message_id)
-        .eq('user_id', user_id)
-        .eq('emoji', emoji)
-        .select('*')
-        .single());
-    }
-    if (error) {
-      if (callback) callback({ status: 'error', message: error.message });
-      return;
-    }
-    // Notify both users
-    socket.emit('friend_message_reaction_update', { message_id, emoji, user_id, action });
-    // Find the other user (sender or receiver)
-    const { data: msgData } = await supabase.from('friend_messages').select('sender_id, receiver_id').eq('id', message_id).single();
-    const otherUserId = msgData && (msgData.sender_id === user_id ? msgData.receiver_id : msgData.sender_id);
-    const toSocketId = connectedUsers.get(otherUserId);
-    if (toSocketId) io.to(toSocketId).emit('friend_message_reaction_update', { message_id, emoji, user_id, action });
-    if (callback) callback({ status: 'ok' });
-  });
-
-  // --- DM REPLY ---
-  socket.on('friend_message_reply', async (msg, callback) => {
-    // msg: { sender_id, receiver_id, content, reply_to_message_id }
-    if (!msg.sender_id || !msg.receiver_id || !msg.content || !msg.reply_to_message_id) {
-      if (callback) callback({ status: 'error', message: 'Missing data' });
-      return;
-    }
-    const { data, error } = await supabase
-      .from('friend_messages')
-      .insert([
-        {
-          sender_id: msg.sender_id,
-          receiver_id: msg.receiver_id,
-          content: msg.content,
-          reply_to_message_id: msg.reply_to_message_id
-        }
-      ])
-      .select('*, sender:sender_id(username, avatar_url), reply_to:reply_to_message_id(*, sender:sender_id(username, avatar_url))')
-      .single();
-    if (error) {
-      if (callback) callback({ status: 'error', message: error.message });
-      return;
-    }
-    const toSocketId = connectedUsers.get(msg.receiver_id);
-    if (toSocketId) io.to(toSocketId).emit('friend_message', data);
     if (callback) callback({ status: 'ok' });
   });
 
