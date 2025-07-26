@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         friendName.textContent = username;
         // Load chat
         await loadFriendChat(friendId);
-        renderFriendMessages();
+        renderFriendMessagesSmooth();
     }
 
     async function loadFriendChat(friendId) {
@@ -365,53 +365,119 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Update renderFriendMessages to show reactions
-    function renderFriendMessages() {
-        const chat = friendChats[selectedFriend.id] || [];
-        friendMessages.innerHTML = chat.length === 0
-            ? '<div class="coming-soon">No messages yet. Start the conversation!</div>'
-            : chat.map(msg => {
-                let reactionsHTML = '';
-                if (msg.reactions) {
-                    reactionsHTML = Object.entries(msg.reactions).map(([emoji, userIds]) => {
-                        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-                        const reacted = userIds.includes(currentUser.id);
-                        return `<span class="reaction${reacted ? ' reacted' : ''}" data-emoji="${emoji}">${emoji} <span class="count">${userIds.length}</span></span>`;
-                    }).join('');
-                }
-                let replyContextHTML = '';
-                if (msg.reply_to) {
-                    replyContextHTML = `<div class="reply-context"><span class="reply-username">@${escapeHtml(msg.reply_to.username)}</span>: <span class="reply-text">${escapeHtml(msg.reply_to.text)}</span></div>`;
-                }
-                let editInputHTML = '';
-                if (editingDMMessageId === msg.id) {
-                    editInputHTML = '';
-                }
-                return `
-                <div class="group-message${msg.isOwn ? ' own' : ''} new-message-animation" data-message-id="${msg.id}">
-                    <div class="group-message-avatar">
-                        <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
-                    </div>
-                    <div class="group-message-content">
-                        ${replyContextHTML}
-                        <div class="group-message-header">
-                            <span class="group-message-username">${escapeHtml(msg.username || selectedFriend.username)}</span>
-                            <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
-                        </div>
-                        <div class="group-message-text">${escapeHtml(msg.text)}</div>
-                        ${editInputHTML}
-                        <div class="message-actions">
-                            <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
-                            <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
-                            <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
-                            <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
-                        </div>
-                        <div class="message-reactions-container" data-message-id="${msg.id}">${reactionsHTML}</div>
-                    </div>
-                </div>
-                `;
+    // --- SMOOTH DM MESSAGE RENDERING ---
+    function appendOrUpdateFriendMessage(msg) {
+        // Check if message already exists in DOM
+        let msgEl = friendMessages.querySelector(`.group-message[data-message-id="${msg.id}"]`);
+        const isNew = !msgEl;
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        let reactionsHTML = '';
+        if (msg.reactions) {
+            reactionsHTML = Object.entries(msg.reactions).map(([emoji, userIds]) => {
+                const reacted = userIds.includes(currentUser.id);
+                return `<span class="reaction${reacted ? ' reacted' : ''}" data-emoji="${emoji}">${emoji} <span class="count">${userIds.length}</span></span>`;
             }).join('');
-        friendMessages.scrollTop = friendMessages.scrollHeight;
+        }
+        let replyContextHTML = '';
+        if (msg.reply_to) {
+            replyContextHTML = `<div class="reply-context"><span class="reply-username">@${escapeHtml(msg.reply_to.username)}</span>: <span class="reply-text">${escapeHtml(msg.reply_to.text)}</span></div>`;
+        }
+        let editInputHTML = '';
+        if (editingDMMessageId === msg.id) {
+            editInputHTML = `
+                <div class="dm-edit-input-row">
+                    <input class="dm-edit-input" type="text" value="${escapeHtml(msg.text)}" />
+                    <button class="save-edit">Save</button>
+                    <button class="cancel-edit">Cancel</button>
+                </div>
+            `;
+        }
+        const html = `
+            <div class="group-message-avatar">
+                <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
+            </div>
+            <div class="group-message-content">
+                ${replyContextHTML}
+                <div class="group-message-header">
+                    <span class="group-message-username">${escapeHtml(msg.username || selectedFriend.username)}</span>
+                    <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
+                </div>
+                <div class="group-message-text">${escapeHtml(msg.text)}</div>
+                ${editInputHTML}
+                <div class="message-actions">
+                    <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
+                    <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                    <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
+                </div>
+                <div class="message-reactions-container" data-message-id="${msg.id}">${reactionsHTML}</div>
+            </div>
+        `;
+        if (msgEl) {
+            // Update in place
+            msgEl.className = `group-message${msg.isOwn ? ' own' : ''}`;
+            msgEl.innerHTML = html;
+            // Attach edit input events if in edit mode
+            if (editingDMMessageId === msg.id) {
+                const editRow = msgEl.querySelector('.dm-edit-input-row');
+                const input = editRow.querySelector('.dm-edit-input');
+                editRow.querySelector('.save-edit').onclick = () => {
+                    socket.emit('friend_message_edit', {
+                        message_id: msg.id,
+                        new_content: input.value
+                    });
+                    editingDMMessageId = null;
+                    editRow.remove();
+                };
+                editRow.querySelector('.cancel-edit').onclick = () => {
+                    editingDMMessageId = null;
+                    editRow.remove();
+                };
+            }
+        } else {
+            // Append new message
+            msgEl = document.createElement('div');
+            msgEl.className = `group-message${msg.isOwn ? ' own' : ''} new-message-animation`;
+            msgEl.dataset.messageId = msg.id;
+            msgEl.innerHTML = html;
+            friendMessages.appendChild(msgEl);
+            // Remove animation class after animation
+            setTimeout(() => msgEl.classList.remove('new-message-animation'), 400);
+            // Attach edit input events if in edit mode
+            if (editingDMMessageId === msg.id) {
+                const editRow = msgEl.querySelector('.dm-edit-input-row');
+                const input = editRow.querySelector('.dm-edit-input');
+                editRow.querySelector('.save-edit').onclick = () => {
+                    socket.emit('friend_message_edit', {
+                        message_id: msg.id,
+                        new_content: input.value
+                    });
+                    editingDMMessageId = null;
+                    editRow.remove();
+                };
+                editRow.querySelector('.cancel-edit').onclick = () => {
+                    editingDMMessageId = null;
+                    editRow.remove();
+                };
+            }
+        }
+    }
+
+    function renderFriendMessagesSmooth() {
+        const chat = friendChats[selectedFriend.id] || [];
+        // Only add missing messages, update changed ones
+        const existingIds = Array.from(friendMessages.querySelectorAll('.group-message')).map(el => el.dataset.messageId);
+        // Remove messages not in chat
+        existingIds.forEach(id => {
+            if (!chat.some(m => m.id == id)) {
+                const el = friendMessages.querySelector(`.group-message[data-message-id="${id}"]`);
+                if (el) el.remove();
+            }
+        });
+        // Add or update messages
+        let atBottom = Math.abs(friendMessages.scrollHeight - friendMessages.scrollTop - friendMessages.clientHeight) < 10;
+        chat.forEach(msg => appendOrUpdateFriendMessage(msg));
+        if (atBottom) friendMessages.scrollTop = friendMessages.scrollHeight;
     }
 
     if (friendMessageForm) {
@@ -428,11 +494,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDMReactionMsgId = null;
     let replyPreviewBar = null;
 
-    // Send DM message (with reply support)
+    // Send DM message (with reply support and edit support)
     function sendFriendMessage() {
         const text = friendMessageInput.value.trim();
         if (!text && !selectedFile) return;
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (editingDMMessageId) {
+            // Save edit
+            socket.emit('friend_message_edit', {
+                message_id: editingDMMessageId,
+                new_content: text
+            });
+            // Remove edit input
+            const editRow = friendMessages.querySelector('.dm-edit-input-row');
+            if (editRow) editRow.remove();
+            editingDMMessageId = null;
+            friendMessageInput.value = '';
+            return;
+        }
+        // Normal send (with reply)
         const payload = {
             content: text,
             sender_id: currentUser.id,
@@ -454,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
             created_at: new Date().toISOString(),
             reply_to: currentDMReplyTo ? getDMMessageById(currentDMReplyTo) : null
         });
-        renderFriendMessages();
+        renderFriendMessagesSmooth();
         friendMessageInput.value = '';
         removeDMReplyPreview();
     }
@@ -488,7 +568,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reaction
             else if (e.target.closest('.action-btn-icon.add-reaction')) {
                 currentDMReactionMsgId = messageId;
-                // --- FIX: Null check for emojiPickerContainer ---
                 if (emojiPickerContainer) {
                     const rect = e.target.getBoundingClientRect();
                     emojiPickerContainer.style.top = `${rect.top - 360}px`;
@@ -520,6 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDMReplyTo = null;
     }
 
+    // Inline edit input logic (only one at a time)
     function startDMEditing(messageEl, messageId) {
         // Remove any other edit input
         const existingEdit = friendMessages.querySelector('.dm-edit-input-row');
@@ -585,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             if (selectedFriend && selectedFriend.id === friendId) {
-                renderFriendMessages();
+                renderFriendMessagesSmooth();
             }
         });
         socket.off('friend_message_update');
@@ -605,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 }
             }
-            renderFriendMessages();
+            renderFriendMessagesSmooth();
         });
         socket.off('friend_message_reaction_update');
         socket.on('friend_message_reaction_update', ({ message_id, emoji, user_id, action }) => {
@@ -620,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (action === 'remove') {
                 msg.reactions[emoji] = msg.reactions[emoji].filter(id => id !== user_id);
             }
-            renderFriendMessages();
+            renderFriendMessagesSmooth();
         });
     }
 
