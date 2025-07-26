@@ -237,6 +237,29 @@ if (switchToSignup) {
 
 // Show/hide password logic
 const togglePasswordBtns = document.querySelectorAll('.toggle-password');
+
+// About Us page logic
+const aboutUsLink = document.getElementById('about-us-link');
+const aboutUsSection = document.querySelector('.about-us-section');
+const homeSection = document.querySelector('.home-section');
+
+if (aboutUsLink && aboutUsSection && homeSection) {
+  aboutUsLink.addEventListener('click', function(e) {
+    e.preventDefault();
+    homeSection.style.display = 'none';
+    aboutUsSection.style.display = 'block';
+    // Trigger animations for heading letters
+    const headingLetters = aboutUsSection.querySelectorAll('.heading-letter');
+    headingLetters.forEach(letter => {
+      letter.style.animation = 'none'; // Reset animation
+      letter.offsetHeight; // Trigger reflow
+      letter.style.animation = ''; // Re-enable animation
+    });
+  });
+
+  // Optionally, add a way to go back to home or ensure initial state is home
+  // For now, we assume home is default and user navigates to About Us
+}
 togglePasswordBtns.forEach(btn => {
   btn.addEventListener('click', function() {
     const targetId = btn.getAttribute('data-target');
@@ -251,4 +274,4 @@ togglePasswordBtns.forEach(btn => {
       }
     }
   });
-}); 
+});
