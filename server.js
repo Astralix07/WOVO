@@ -147,9 +147,39 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- FRIENDS REAL-TIME MESSAGING ---
+  app.get('/api/friends/:friendId/messages', async (req, res) => {
+    const { friendId } = req.params;
+    const { include_reactions } = req.query;
+    const currentUserId = req.headers['x-user-id']; // Assume user ID is sent in headers
+
+    if (!currentUserId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    let query = supabase
+        .from('friend_messages')
+        .select(`
+            *,
+            reply_to:reply_to_message_id(*, sender:sender_id(username)),
+            sender:sender_id(username, avatar_url),
+            receiver:receiver_id(username, avatar_url)
+            ${include_reactions ? ', friend_message_reactions(*, users(username))' : ''}
+        `)
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${currentUserId})`)
+        .order('created_at', { ascending: true });
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error('Error fetching friend messages:', error);
+        return res.status(500).json({ error: error.message });
+    }
+    res.json(data);
+});
+
+// --- FRIENDS REAL-TIME MESSAGING ---
   socket.on('friend_message_send', async (msg, callback) => {
-    // msg: { sender_id, receiver_id, content }
+    // msg: { sender_id, receiver_id, content, client_temp_id, reply_to_message_id }
     if (!msg.sender_id || !msg.receiver_id || !msg.content) {
       if (callback) callback({ status: 'error', message: 'Missing data' });
       return;
@@ -160,22 +190,201 @@ io.on('connection', (socket) => {
         {
           sender_id: msg.sender_id,
           receiver_id: msg.receiver_id,
-          content: msg.content
+          content: msg.content,
+          client_temp_id: msg.client_temp_id,
+          reply_to_message_id: msg.reply_to_message_id
         }
       ])
-      .select('*')
+      // Fetch the message we just inserted, and if it's a reply,
+      // also fetch the original message it replies to, and the original sender's username.
+      .select('*, reply_to:reply_to_message_id(*, sender:sender_id(username))')
       .single();
+
     if (error) {
+      console.error('Error saving friend message:', error);
       if (callback) callback({ status: 'error', message: error.message });
       return;
     }
-    // Emit to sender
+
+    // 'data' now contains the new message, and a 'reply_to' object if it was a reply.
+    
+    // Emit to sender to confirm
     socket.emit('friend_message', data);
-    // Emit to receiver if online
-    const toSocketId = connectedUsers.get(msg.receiver_id);
-    if (toSocketId) {
-      io.to(toSocketId).emit('friend_message', data);
+
+    // Emit to receiver if they are online
+    const receiverSocketId = connectedUsers.get(msg.receiver_id);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('friend_message', data);
     }
+
+    if (callback) callback({ status: 'ok' });
+  });
+
+  // Handle deleting a friend message
+  socket.on('friend_message_delete', async (data, callback) => {
+    const { messageId } = data;
+    const userId = socket.userId;
+
+    if (!messageId || !userId) {
+      if (callback) callback({ status: 'error', message: 'Missing data' });
+      return;
+    }
+
+    // First, verify the user owns the message
+    const { data: message, error: fetchError } = await supabase
+      .from('friend_messages')
+      .select('sender_id, receiver_id')
+      .eq('id', messageId)
+      .single();
+
+    if (fetchError || !message) {
+      if (callback) callback({ status: 'error', message: 'Message not found' });
+      return;
+    }
+
+    if (message.sender_id !== userId) {
+      if (callback) callback({ status: 'error', message: 'You are not authorized to delete this message' });
+      return;
+    }
+
+    // Proceed with deletion
+    const { error: deleteError } = await supabase
+      .from('friend_messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (deleteError) {
+      if (callback) callback({ status: 'error', message: 'Failed to delete message' });
+      return;
+    }
+
+    // Notify both sender and receiver
+    const receiverSocketId = connectedUsers.get(message.receiver_id);
+    socket.emit('friend_message_deleted', { messageId });
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('friend_message_deleted', { messageId });
+    }
+
+    if (callback) callback({ status: 'ok' });
+  });
+
+  // Handle editing a friend message
+  socket.on('friend_message_edit', async (data, callback) => {
+    const { messageId, newContent } = data;
+    const userId = socket.userId;
+
+    if (!messageId || !newContent || !userId) {
+      if (callback) callback({ status: 'error', message: 'Missing data' });
+      return;
+    }
+
+    // First, verify the user owns the message
+    const { data: message, error: fetchError } = await supabase
+      .from('friend_messages')
+      .select('sender_id, receiver_id')
+      .eq('id', messageId)
+      .single();
+
+    if (fetchError || !message) {
+      if (callback) callback({ status: 'error', message: 'Message not found' });
+      return;
+    }
+
+    if (message.sender_id !== userId) {
+      if (callback) callback({ status: 'error', message: 'You are not authorized to edit this message' });
+      return;
+    }
+
+    // Proceed with the update
+    const { data: updatedMessage, error: updateError } = await supabase
+      .from('friend_messages')
+      .update({ content: newContent, is_edited: true })
+      .eq('id', messageId)
+      .select()
+      .single();
+
+    if (updateError) {
+      if (callback) callback({ status: 'error', message: 'Failed to edit message' });
+      return;
+    }
+
+    // Notify both sender and receiver
+    const receiverSocketId = connectedUsers.get(message.receiver_id);
+    const payload = { 
+        messageId: updatedMessage.id, 
+        newContent: updatedMessage.content, 
+        is_edited: updatedMessage.is_edited 
+    };
+    socket.emit('friend_message_edited', payload);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('friend_message_edited', payload);
+    }
+
+    if (callback) callback({ status: 'ok' });
+  });
+
+  socket.on('friend_message_react', async (data, callback) => {
+    const { messageId, emoji } = data;
+    const userId = socket.userId;
+
+    if (!messageId || !emoji || !userId) {
+      if (callback) callback({ status: 'error', message: 'Missing data' });
+      return;
+    }
+
+    const { data: message, error: fetchError } = await supabase
+      .from('friend_messages')
+      .select('sender_id, receiver_id')
+      .eq('id', messageId)
+      .single();
+
+    if (fetchError || !message) {
+      if (callback) callback({ status: 'error', message: 'Message not found' });
+      return;
+    }
+    
+    const otherUserId = message.sender_id === userId ? message.receiver_id : message.sender_id;
+
+    const { data: existingReaction, error: findError } = await supabase
+      .from('friend_message_reactions')
+      .select('id')
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji)
+      .single();
+
+    if (findError && findError.code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error('Error finding reaction:', findError);
+        if (callback) callback({ status: 'error', message: 'Database error while finding reaction' });
+        return;
+    }
+
+    if (existingReaction) {
+      await supabase.from('friend_message_reactions').delete().eq('id', existingReaction.id);
+    } else {
+      await supabase.from('friend_message_reactions').insert({ message_id: messageId, user_id: userId, emoji });
+    }
+
+    const { data: reactions, error: fetchReactionsError } = await supabase
+      .from('friend_message_reactions')
+      .select('emoji, user_id, users(username)')
+      .eq('message_id', messageId);
+
+    if (fetchReactionsError) {
+      console.error('Error fetching reactions:', fetchReactionsError);
+      if (callback) callback({ status: 'error', message: 'Database error while fetching reactions' });
+      return;
+    }
+
+    const payload = { messageId, reactions };
+
+    // Emit to both users
+    socket.emit('friend_message_reaction_update', payload);
+    const otherUserSocketId = connectedUsers.get(otherUserId);
+    if (otherUserSocketId) {
+      io.to(otherUserSocketId).emit('friend_message_reaction_update', payload);
+    }
+
     if (callback) callback({ status: 'ok' });
   });
 
