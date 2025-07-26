@@ -6,7 +6,6 @@
     <title>WOVO Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="discord-chat.css">
     <link rel="stylesheet" href="components/group-settings.css">
@@ -313,7 +312,7 @@
                             <div class="user-mentions-popup" id="userMentionsPopup" style="display: none;"></div>
                             <div class="message-input-container">
                                 <button type="button" id="addAttachmentBtn"><i class="fas fa-plus-circle"></i></button>
-                            <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
+                                <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
                                 <button type="button" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
                             </div>
                         </form>
@@ -341,9 +340,6 @@
                                     <button type="button" id="sendFriendMessageBtn"><i class="fas fa-paper-plane"></i></button>
                                 </div>
                             </form>
-                        </div>
-                        <div id="dm-reaction-picker-container" class="reaction-picker-container">
-                            <emoji-picker class="light"></emoji-picker>
                         </div>
                     </div>
                 </div>
