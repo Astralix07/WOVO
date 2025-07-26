@@ -26,8 +26,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Hide all main sections
             Object.values(mainSections).forEach(sec => sec && (sec.style.display = 'none'));
 
-            // Show the correct section
+            // Show/hide sidebars
             const label = item.querySelector('.nav-label')?.textContent?.toLowerCase();
+            const friendSidebar = document.getElementById('friendProfileSidebar');
+            const groupSidebar = document.getElementById('groupMembersSidebar');
+            if (label === 'friends') {
+                if (friendSidebar) friendSidebar.style.display = '';
+                if (groupSidebar) groupSidebar.style.display = 'none';
+                selectDefaultFriend();
+            } else {
+                if (friendSidebar) friendSidebar.style.display = 'none';
+                if (groupSidebar) groupSidebar.style.display = '';
+            }
+
+            // Show the correct section
             if (label && mainSections[label]) {
                 mainSections[label].style.display = '';
                 mainSections[label].classList.add('active');
@@ -35,18 +47,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainSections.groups.style.display = '';
                 mainSections.groups.classList.add('active');
             }
-
-            if (label === 'friends') {
-                selectDefaultFriend();
-            }
         });
     });
 
+    // Update friend profile sidebar when a friend is selected
+    function updateFriendProfileSidebar(friendItem) {
+        if (!friendItem) return;
+        const name = friendItem.querySelector('.friend-name')?.textContent || 'Friend';
+        const avatar = friendItem.querySelector('img')?.src || 'assets/default-avatar.png';
+        const id = friendItem.dataset.userId || '-';
+        const banner = friendItem.dataset.bannerUrl || '';
+
+        // Get all required elements
+        const nameEl = document.getElementById('friendProfileName');
+        const avatarEl = document.getElementById('friendProfileAvatar');
+        const idEl = document.getElementById('friendProfileId');
+        const bannerDiv = document.getElementById('friendBanner');
+
+        // Guard: Only update if all elements exist
+        if (!nameEl || !avatarEl || !idEl || !bannerDiv) return;
+
+        nameEl.textContent = name;
+        avatarEl.src = avatar;
+        idEl.textContent = id;
+        if (banner && bannerDiv) {
+            bannerDiv.style.backgroundImage = `url('${banner}')`;
+        } else if (bannerDiv) {
+            bannerDiv.style.background = 'var(--bg-tertiary)';
+        }
+    }
+
+    // Also update sidebar on default friend selection
     function selectDefaultFriend() {
         const friendsList = document.getElementById('realFriendsList');
         if (!friendsList) return;
-
-        // Use a MutationObserver to wait for friends to be loaded if they are added dynamically
         const observer = new MutationObserver((mutationsList, observer) => {
             const firstFriend = friendsList.querySelector('.friend-item');
             if (firstFriend) {
@@ -67,14 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (friendAvatarSrc && headerAvatar) {
                     headerAvatar.src = friendAvatarSrc;
                 }
-                observer.disconnect(); // We're done, so disconnect
+                updateFriendProfileSidebar(firstFriend);
+                // --- Ensure sidebar is correct ---
+                const friendSidebar = document.getElementById('friendProfileSidebar');
+                const groupSidebar = document.getElementById('groupMembersSidebar');
+                if (friendSidebar) friendSidebar.style.display = '';
+                if (groupSidebar) groupSidebar.style.display = 'none';
+                observer.disconnect();
             }
         });
-
-        // Start observing the friends list for child additions
         observer.observe(friendsList, { childList: true, subtree: true });
-
-        // Also, check if the friend is already there
         const firstFriend = friendsList.querySelector('.friend-item');
         if (firstFriend) {
             const friendsTitle = document.getElementById('friends-title');
@@ -84,6 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (friendName && friendsTitle) {
                 friendsTitle.textContent = friendName;
             }
+            updateFriendProfileSidebar(firstFriend);
+            // --- Ensure sidebar is correct ---
+            const friendSidebar = document.getElementById('friendProfileSidebar');
+            const groupSidebar = document.getElementById('groupMembersSidebar');
+            if (friendSidebar) friendSidebar.style.display = '';
+            if (groupSidebar) groupSidebar.style.display = 'none';
             observer.disconnect();
         }
     }
@@ -116,6 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (friendAvatarSrc && headerAvatar) {
                 headerAvatar.src = friendAvatarSrc;
             }
+            updateFriendProfileSidebar(clickedFriend);
+            // --- Ensure sidebar is correct ---
+            const friendSidebar = document.getElementById('friendProfileSidebar');
+            const groupSidebar = document.getElementById('groupMembersSidebar');
+            if (friendSidebar) friendSidebar.style.display = '';
+            if (groupSidebar) groupSidebar.style.display = 'none';
         });
     }
 

@@ -719,37 +719,51 @@
 
         <!-- Members Sidebar (Right) -->
         <aside class="members-sidebar">
-            <div class="members-header">
-                <h3>MEMBERS</h3>
-            </div>
-            
-            <!-- Member Categories -->
-            <div class="member-category">
-                <h4>ONLINE — 3</h4>
-                <div class="member-list">
-                    <div class="member-item">
-                        <div class="member-avatar">
-                            <div class="status-indicator online"></div>
-                        </div>
-                        <span class="member-name">User 1</span>
-                    </div>
-                    <div class="member-item">
-                        <div class="member-avatar">
-                            <div class="status-indicator online"></div>
-                        </div>
-                        <span class="member-name">User 2</span>
-                    </div>
+            <!-- Friend Profile Sidebar (hidden by default) -->
+            <div class="friend-profile-sidebar" id="friendProfileSidebar" style="display: none;">
+                <div class="friend-banner" id="friendBanner" style="background: var(--bg-tertiary);"></div>
+                <div class="friend-profile-avatar-wrapper">
+                    <img id="friendProfileAvatar" src="assets/default-avatar.png" alt="Friend Avatar">
+                </div>
+                <div class="friend-profile-info">
+                    <div class="friend-profile-name" id="friendProfileName">Friend Name</div>
+                    <div class="friend-profile-id">ID: <span id="friendProfileId">-</span></div>
                 </div>
             </div>
-
-            <div class="member-category">
-                <h4>OFFLINE — 1</h4>
-                <div class="member-list">
-                    <div class="member-item">
-                        <div class="member-avatar">
-                            <div class="status-indicator offline"></div>
+            <!-- Group Members Sidebar (default) -->
+            <div class="group-members-sidebar" id="groupMembersSidebar">
+                <div class="members-header">
+                    <h3>MEMBERS</h3>
+                </div>
+            
+                <!-- Member Categories -->
+                <div class="member-category">
+                    <h4>ONLINE — 3</h4>
+                    <div class="member-list">
+                        <div class="member-item">
+                            <div class="member-avatar">
+                                <div class="status-indicator online"></div>
+                            </div>
+                            <span class="member-name">User 1</span>
                         </div>
-                        <span class="member-name">User 3</span>
+                        <div class="member-item">
+                            <div class="member-avatar">
+                                <div class="status-indicator online"></div>
+                            </div>
+                            <span class="member-name">User 2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="member-category">
+                    <h4>OFFLINE — 1</h4>
+                    <div class="member-list">
+                        <div class="member-item">
+                            <div class="member-avatar">
+                                <div class="status-indicator offline"></div>
+                            </div>
+                            <span class="member-name">User 3</span>
+                        </div>
                     </div>
                 </div>
             </div>
