@@ -379,17 +379,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         return `<span class="reaction${reacted ? ' reacted' : ''}" data-emoji="${emoji}">${emoji} <span class="count">${userIds.length}</span></span>`;
                     }).join('');
                 }
+                let replyContextHTML = '';
+                if (msg.reply_to) {
+                    replyContextHTML = `<div class="reply-context"><span class="reply-username">@${escapeHtml(msg.reply_to.username)}</span>: <span class="reply-text">${escapeHtml(msg.reply_to.text)}</span></div>`;
+                }
+                let editInputHTML = '';
+                if (editingDMMessageId === msg.id) {
+                    editInputHTML = '';
+                }
                 return `
                 <div class="group-message${msg.isOwn ? ' own' : ''} new-message-animation" data-message-id="${msg.id}">
                     <div class="group-message-avatar">
                         <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
                     </div>
                     <div class="group-message-content">
+                        ${replyContextHTML}
                         <div class="group-message-header">
                             <span class="group-message-username">${escapeHtml(msg.username || selectedFriend.username)}</span>
                             <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
                         </div>
                         <div class="group-message-text">${escapeHtml(msg.text)}</div>
+                        ${editInputHTML}
                         <div class="message-actions">
                             <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
                             <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
@@ -416,43 +426,90 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDMReplyTo = null;
     let editingDMMessageId = null;
     let currentDMReactionMsgId = null;
+    let replyPreviewBar = null;
 
     // Handle message actions
-    friendMessages.addEventListener('click', function(e) {
-        const messageEl = e.target.closest('.group-message');
-        if (!messageEl) return;
-        const messageId = messageEl.dataset.messageId;
-        // Reply
-        if (e.target.closest('.action-btn-icon.reply')) {
-            currentDMReplyTo = messageId;
-            friendMessageInput.focus();
-            friendMessageInput.placeholder = 'Replying...';
-        }
-        // Edit
-        else if (e.target.closest('.action-btn-icon.edit')) {
-            if (!messageEl.classList.contains('own')) return;
-            const textEl = messageEl.querySelector('.group-message-text');
-            if (!textEl) return;
-            editingDMMessageId = messageId;
-            friendMessageInput.value = textEl.textContent;
-            friendMessageInput.focus();
-            friendMessageInput.placeholder = 'Editing message...';
-        }
-        // Delete
-        else if (e.target.closest('.action-btn-icon.delete')) {
-            if (!messageEl.classList.contains('own')) return;
-            socket.emit('friend_message_delete', { message_id: messageId });
-        }
-        // Reaction
-        else if (e.target.closest('.action-btn-icon.add-reaction')) {
-            currentDMReactionMsgId = messageId;
-            // Show emoji picker near the button
-            const rect = e.target.getBoundingClientRect();
-            emojiPickerContainer.style.top = `${rect.top - 360}px`;
-            emojiPickerContainer.style.left = `${rect.left - 300}px`;
-            emojiPickerContainer.style.display = 'block';
-        }
-    });
+    if (friendMessages) {
+        friendMessages.addEventListener('click', function(e) {
+            const messageEl = e.target.closest('.group-message');
+            if (!messageEl) return;
+            const messageId = messageEl.dataset.messageId;
+            // Reply
+            if (e.target.closest('.action-btn-icon.reply')) {
+                currentDMReplyTo = messageId;
+                showDMReplyPreview(messageEl);
+            }
+            // Edit
+            else if (e.target.closest('.action-btn-icon.edit')) {
+                if (!messageEl.classList.contains('own')) return;
+                startDMEditing(messageEl, messageId);
+            }
+            // Delete
+            else if (e.target.closest('.action-btn-icon.delete')) {
+                if (!messageEl.classList.contains('own')) return;
+                socket.emit('friend_message_delete', { message_id: messageId });
+            }
+            // Reaction
+            else if (e.target.closest('.action-btn-icon.add-reaction')) {
+                currentDMReactionMsgId = messageId;
+                const rect = e.target.getBoundingClientRect();
+                emojiPickerContainer.style.top = `${rect.top - 360}px`;
+                emojiPickerContainer.style.left = `${rect.left - 300}px`;
+                emojiPickerContainer.style.display = 'block';
+            }
+        });
+    }
+
+    function showDMReplyPreview(messageEl) {
+        removeDMReplyPreview();
+        const text = messageEl.querySelector('.group-message-text')?.textContent || '';
+        const username = messageEl.querySelector('.group-message-username')?.textContent || '';
+        replyPreviewBar = document.createElement('div');
+        replyPreviewBar.className = 'reply-preview';
+        replyPreviewBar.innerHTML = `
+            <div class="reply-preview-content">
+                Replying to <strong>${escapeHtml(username)}</strong>: <span>${escapeHtml(text)}</span>
+            </div>
+            <button class="cancel-reply-btn">&times;</button>
+        `;
+        friendMessageForm.prepend(replyPreviewBar);
+        replyPreviewBar.querySelector('.cancel-reply-btn').onclick = removeDMReplyPreview;
+    }
+    function removeDMReplyPreview() {
+        if (replyPreviewBar) replyPreviewBar.remove();
+        replyPreviewBar = null;
+        currentDMReplyTo = null;
+    }
+
+    function startDMEditing(messageEl, messageId) {
+        // Remove any other edit input
+        const existingEdit = friendMessages.querySelector('.dm-edit-input-row');
+        if (existingEdit) existingEdit.remove();
+        editingDMMessageId = messageId;
+        const text = messageEl.querySelector('.group-message-text')?.textContent || '';
+        const editRow = document.createElement('div');
+        editRow.className = 'dm-edit-input-row';
+        editRow.innerHTML = `
+            <input class="dm-edit-input" type="text" value="${escapeHtml(text)}" />
+            <button class="save-edit">Save</button>
+            <button class="cancel-edit">Cancel</button>
+        `;
+        messageEl.querySelector('.group-message-content').appendChild(editRow);
+        const input = editRow.querySelector('.dm-edit-input');
+        input.focus();
+        editRow.querySelector('.save-edit').onclick = () => {
+            socket.emit('friend_message_edit', {
+                message_id: messageId,
+                new_content: input.value
+            });
+            editingDMMessageId = null;
+            editRow.remove();
+        };
+        editRow.querySelector('.cancel-edit').onclick = () => {
+            editingDMMessageId = null;
+            editRow.remove();
+        };
+    }
 
     // Handle emoji selection for DM reactions
     emojiPicker?.addEventListener('emoji-click', async e => {
