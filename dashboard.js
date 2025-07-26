@@ -398,10 +398,10 @@ async function joinGroup(groupId) {
 
 // Helper: Render members in the members-sidebar
 async function renderGroupMembersSidebar(groupId) {
-    const sidebar = document.querySelector('.members-sidebar');
-    if (!sidebar || !groupId) return;
+    const sidebar = document.getElementById('groupMembersSidebar');
+    if (!sidebar) return;
 
-    // Show loading state
+    // Clear only the group members content, not the whole sidebar
     sidebar.innerHTML = `
         <div class="members-header"><h3>MEMBERS</h3></div>
         <div class="member-category"><h4>Loading...</h4></div>
