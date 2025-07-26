@@ -428,6 +428,42 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDMReactionMsgId = null;
     let replyPreviewBar = null;
 
+    // Send DM message (with reply support)
+    function sendFriendMessage() {
+        const text = friendMessageInput.value.trim();
+        if (!text && !selectedFile) return;
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const payload = {
+            content: text,
+            sender_id: currentUser.id,
+            receiver_id: selectedFriend.id,
+            reply_to: currentDMReplyTo, // send reply_to if replying
+            // add media fields if needed
+        };
+        socket.emit('friend_message_send', payload, (ack) => {
+            // Optionally handle server ack
+        });
+        // Optimistically add message for sender
+        if (!friendChats[selectedFriend.id]) friendChats[selectedFriend.id] = [];
+        friendChats[selectedFriend.id].push({
+            id: 'temp_' + Date.now(),
+            text,
+            isOwn: true,
+            username: currentUser.username,
+            avatar_url: currentUser.avatar_url,
+            created_at: new Date().toISOString(),
+            reply_to: currentDMReplyTo ? getDMMessageById(currentDMReplyTo) : null
+        });
+        renderFriendMessages();
+        friendMessageInput.value = '';
+        removeDMReplyPreview();
+    }
+
+    function getDMMessageById(id) {
+        const chat = friendChats[selectedFriend.id] || [];
+        return chat.find(m => m.id === id) || null;
+    }
+
     // Handle message actions
     if (friendMessages) {
         friendMessages.addEventListener('click', function(e) {
@@ -452,10 +488,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reaction
             else if (e.target.closest('.action-btn-icon.add-reaction')) {
                 currentDMReactionMsgId = messageId;
-                const rect = e.target.getBoundingClientRect();
-                emojiPickerContainer.style.top = `${rect.top - 360}px`;
-                emojiPickerContainer.style.left = `${rect.left - 300}px`;
-                emojiPickerContainer.style.display = 'block';
+                // --- FIX: Null check for emojiPickerContainer ---
+                if (emojiPickerContainer) {
+                    const rect = e.target.getBoundingClientRect();
+                    emojiPickerContainer.style.top = `${rect.top - 360}px`;
+                    emojiPickerContainer.style.left = `${rect.left - 300}px`;
+                    emojiPickerContainer.style.display = 'block';
+                }
             }
         });
     }
@@ -526,41 +565,29 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDMReactionMsgId = null;
     });
 
-    // Send or edit or reply
-    function sendFriendMessage() {
-        const text = friendMessageInput.value.trim();
-        if (!text || !selectedFriend) return;
-        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        if (editingDMMessageId) {
-            socket.emit('friend_message_edit', {
-                message_id: editingDMMessageId,
-                new_content: text
-            });
-            editingDMMessageId = null;
-            friendMessageInput.placeholder = 'Message @friend';
-        } else if (currentDMReplyTo) {
-            socket.emit('friend_message_reply', {
-                sender_id: currentUser.id,
-                receiver_id: selectedFriend.id,
-                content: text,
-                reply_to_message_id: currentDMReplyTo
-            });
-            currentDMReplyTo = null;
-            friendMessageInput.placeholder = 'Message @friend';
-        } else {
-            socket.emit('friend_message_send', {
-                sender_id: currentUser.id,
-                receiver_id: selectedFriend.id,
-                content: text
-            });
-        }
-        friendMessageInput.value = '';
-        sendFriendMessageBtn.classList.add('sent');
-        setTimeout(() => sendFriendMessageBtn.classList.remove('sent'), 300);
-    }
-
-    // Real-time updates for edit, delete, reply, reactions
+    // Real-time receive and update
     if (window.socket) {
+        socket.off('friend_message');
+        socket.on('friend_message', data => {
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+            const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
+            if (!friendChats[friendId]) friendChats[friendId] = [];
+            // Prevent duplicate messages
+            if (!friendChats[friendId].some(m => m.id === data.id)) {
+                friendChats[friendId].push({
+                    id: data.id,
+                    text: data.content,
+                    isOwn: data.sender_id === currentUser.id,
+                    username: data.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
+                    avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
+                    created_at: data.created_at,
+                    reply_to: data.reply_to ? getDMMessageById(data.reply_to) : null
+                });
+            }
+            if (selectedFriend && selectedFriend.id === friendId) {
+                renderFriendMessages();
+            }
+        });
         socket.off('friend_message_update');
         socket.on('friend_message_update', data => {
             const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
