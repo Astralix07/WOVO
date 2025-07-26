@@ -606,7 +606,7 @@
 .reaction .count {
     font-weight: 600;
     color: var(--text-secondary);
-}
+} 
 
 /* Responsive adjustments */
 @media (max-width: 600px) {

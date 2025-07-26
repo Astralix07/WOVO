@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         friendMessages.innerHTML = chat.length === 0
             ? '<div class="coming-soon">No messages yet. Start the conversation!</div>'
             : chat.map(msg => `
-                <div class="group-message${msg.isOwn ? ' own' : ''}">
+                <div class="group-message${msg.isOwn ? ' own' : ''} new-message-animation" data-message-id="${msg.id}">
                     <div class="group-message-avatar">
                         <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
                     </div>
@@ -377,6 +377,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
                         </div>
                         <div class="group-message-text">${escapeHtml(msg.text)}</div>
+                        <div class="message-actions">
+                            <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
+                            <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                            <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
+                        </div>
+                        <div class="message-reactions-container" data-message-id="${msg.id}"></div>
                     </div>
                 </div>
             `).join('');
@@ -391,36 +398,112 @@ document.addEventListener('DOMContentLoaded', () => {
         sendFriendMessageBtn.addEventListener('click', sendFriendMessage);
     }
 
+    // --- DM MESSAGE ACTIONS (REPLY, EDIT, DELETE, REACTIONS) ---
+    let currentDMReplyTo = null;
+    let editingDMMessageId = null;
+
+    // Handle message actions
+    friendMessages.addEventListener('click', function(e) {
+        const messageEl = e.target.closest('.group-message');
+        if (!messageEl) return;
+        const messageId = messageEl.dataset.messageId;
+        // Reply
+        if (e.target.closest('.action-btn-icon.reply')) {
+            currentDMReplyTo = messageId;
+            friendMessageInput.focus();
+            friendMessageInput.placeholder = 'Replying...';
+        }
+        // Edit
+        else if (e.target.closest('.action-btn-icon.edit')) {
+            if (!messageEl.classList.contains('own')) return;
+            const textEl = messageEl.querySelector('.group-message-text');
+            if (!textEl) return;
+            editingDMMessageId = messageId;
+            friendMessageInput.value = textEl.textContent;
+            friendMessageInput.focus();
+            friendMessageInput.placeholder = 'Editing message...';
+        }
+        // Delete
+        else if (e.target.closest('.action-btn-icon.delete')) {
+            if (!messageEl.classList.contains('own')) return;
+            socket.emit('friend_message_delete', { message_id: messageId });
+        }
+        // Reaction
+        else if (e.target.closest('.action-btn-icon.add-reaction')) {
+            // For demo: react with 👍
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+            socket.emit('friend_message_reaction', {
+                message_id: messageId,
+                user_id: currentUser.id,
+                emoji: '👍',
+                action: 'add'
+            });
+        }
+    });
+
+    // Send or edit or reply
     function sendFriendMessage() {
         const text = friendMessageInput.value.trim();
         if (!text || !selectedFriend) return;
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        socket.emit('friend_message_send', {
-            sender_id: currentUser.id,
-            receiver_id: selectedFriend.id,
-            content: text
-        });
+        if (editingDMMessageId) {
+            socket.emit('friend_message_edit', {
+                message_id: editingDMMessageId,
+                new_content: text
+            });
+            editingDMMessageId = null;
+            friendMessageInput.placeholder = 'Message @friend';
+        } else if (currentDMReplyTo) {
+            socket.emit('friend_message_reply', {
+                sender_id: currentUser.id,
+                receiver_id: selectedFriend.id,
+                content: text,
+                reply_to_message_id: currentDMReplyTo
+            });
+            currentDMReplyTo = null;
+            friendMessageInput.placeholder = 'Message @friend';
+        } else {
+            socket.emit('friend_message_send', {
+                sender_id: currentUser.id,
+                receiver_id: selectedFriend.id,
+                content: text
+            });
+        }
         friendMessageInput.value = '';
         sendFriendMessageBtn.classList.add('sent');
         setTimeout(() => sendFriendMessageBtn.classList.remove('sent'), 300);
     }
 
-    // Real-time receive
+    // Real-time updates for edit, delete, reply, reactions
     if (window.socket) {
-        socket.off('friend_message'); // Remove previous listener to avoid duplicates
-        socket.on('friend_message', data => {
-            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-            const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
-            if (!friendChats[friendId]) friendChats[friendId] = [];
-            friendChats[friendId].push({
-                text: data.content,
-                isOwn: data.sender_id === currentUser.id,
-                username: data.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
-                avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
-                created_at: data.created_at
-            });
-            if (selectedFriend && selectedFriend.id === friendId) {
-                renderFriendMessages();
+        socket.off('friend_message_update');
+        socket.on('friend_message_update', data => {
+            const friendId = data.sender_id === selectedFriend.id ? data.sender_id : data.receiver_id;
+            // Update the message in chat
+            if (friendChats[friendId]) {
+                const idx = friendChats[friendId].findIndex(m => m.id === data.id);
+                if (idx !== -1) {
+                    friendChats[friendId][idx] = {
+                        ...friendChats[friendId][idx],
+                        text: data.content,
+                        isOwn: data.sender_id === JSON.parse(localStorage.getItem('wovo_user')).id,
+                        is_edited: data.is_edited,
+                        is_deleted: data.is_deleted
+                    };
+                }
+            }
+            renderFriendMessages();
+        });
+        socket.off('friend_message_reaction_update');
+        socket.on('friend_message_reaction_update', ({ message_id, emoji, user_id, action }) => {
+            // For demo: just show emoji as text (implement full UI as needed)
+            const msgEl = friendMessages.querySelector(`.group-message[data-message-id="${message_id}"] .message-reactions-container`);
+            if (msgEl) {
+                if (action === 'add') {
+                    msgEl.innerHTML = `<span>${emoji}</span>`;
+                } else {
+                    msgEl.innerHTML = '';
+                }
             }
         });
     }
