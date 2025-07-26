@@ -201,6 +201,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Close About Us section
+    const closeAboutUsBtn = document.querySelector('.close-about-us-btn');
+    if (closeAboutUsBtn) {
+        closeAboutUsBtn.addEventListener('click', () => {
+            const aboutUsSection = document.getElementById('about-us-section');
+            if (aboutUsSection) {
+                aboutUsSection.classList.remove('active');
+                // Optionally, activate a default settings section or close settings page
+                // For now, let's just hide the about us section
+            }
+        });
+    }
+
     // Refresh groups button logic
     const refreshBtn = document.querySelector('.refresh-groups-btn');
     if (refreshBtn) {
