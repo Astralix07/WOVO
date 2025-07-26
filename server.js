@@ -147,38 +147,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- FRIENDS REAL-TIME MESSAGING ---
-  socket.on('friend_message_send', async (msg, callback) => {
-    // msg: { sender_id, receiver_id, content }
-    if (!msg.sender_id || !msg.receiver_id || !msg.content) {
-      if (callback) callback({ status: 'error', message: 'Missing data' });
-      return;
-    }
-    const { data, error } = await supabase
-      .from('friend_messages')
-      .insert([
-        {
-          sender_id: msg.sender_id,
-          receiver_id: msg.receiver_id,
-          content: msg.content
-        }
-      ])
-      .select('*')
-      .single();
-    if (error) {
-      if (callback) callback({ status: 'error', message: error.message });
-      return;
-    }
-    // Emit to sender
-    socket.emit('friend_message', data);
-    // Emit to receiver if online
-    const toSocketId = connectedUsers.get(msg.receiver_id);
-    if (toSocketId) {
-      io.to(toSocketId).emit('friend_message', data);
-    }
-    if (callback) callback({ status: 'ok' });
-  });
-
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     if (socket.userId) {

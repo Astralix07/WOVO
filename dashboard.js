@@ -1031,7 +1031,6 @@ const settingsSections = document.querySelectorAll('.settings-section');
 
 // Function to open settings
 function openSettings() {
-    const defaultContent = document.getElementById('groups-content');
     defaultContent.classList.remove('active');
     settingsPage.classList.remove('closing');
     settingsPage.classList.add('active');
@@ -1054,12 +1053,16 @@ if (sidebarSettingsBtn) {
 }
 
 // Close Settings with animation
-if (closeSettingsBtn && defaultContent) {
+if (closeSettingsBtn) {
     closeSettingsBtn.addEventListener('click', () => {
-        if (settingsPage) {
-            settingsPage.classList.remove('active');
+        // Start closing animation
+        settingsPage.classList.add('closing');
+        settingsPage.classList.remove('active');
+        
+        // Wait for animation to complete before showing default content
+        setTimeout(() => {
             defaultContent.classList.add('active');
-        }
+        }, 300); // Match the CSS transition duration
     });
 }
 
