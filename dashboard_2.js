@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const filePreviewContainer = document.getElementById('filePreviewContainer');
     const mediaCaptionInput = document.getElementById('mediaCaptionInput');
 
-
     let selectedFile = null;
 
     if (addAttachmentBtn) {
@@ -345,31 +344,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadFriendChat(friendId) {
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        const { data, error } = await supabase
-            .from('friend_messages')
-            .select('*, reply_to:reply_to_message_id(*)')
-            .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
-            .or(`sender_id.eq.${friendId},receiver_id.eq.${friendId}`)
-            .order('created_at', { ascending: true });
-        if (!error) {
-            friendChats[friendId] = (data || []).filter(m =>
-                (m.sender_id === currentUser.id && m.receiver_id === friendId) ||
-                (m.sender_id === friendId && m.receiver_id === currentUser.id)
-            ).map(m => ({
-                id: m.id,
-                text: m.content,
-                isOwn: m.sender_id === currentUser.id,
-                username: m.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
-                avatar_url: m.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
-                created_at: m.created_at,
-                reply_to: m.reply_to ? {
-                    id: m.reply_to.id,
-                    text: m.reply_to.content,
-                    username: m.reply_to.sender_id === currentUser.id ? currentUser.username : selectedFriend.username
-                } : null,
-                is_edited: m.is_edited || false,
-                is_deleted: m.is_deleted || false
-            }));
+        try {
+            const response = await fetch(`/api/friends/${friendId}/messages?currentUserId=${currentUser.id}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch messages');
+            }
+            const messages = await response.json();
+            friendChats[friendId] = messages;
+        } catch (error) {
+            console.error('Error loading friend chat:', error);
+            friendChats[friendId] = [];
         }
     }
 
@@ -387,7 +371,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let replyContextHTML = '';
         if (msg.reply_to) {
-            replyContextHTML = `<div class="reply-context"><span class="reply-username">@${escapeHtml(msg.reply_to.username)}</span>: <span class="reply-text">${escapeHtml(msg.reply_to.text)}</span></div>`;
+            const replyUsername = msg.reply_to.sender?.username || 'user';
+            const replyContent = msg.reply_to.content || '';
+            replyContextHTML = `<div class="reply-context"><span class="reply-username">@${escapeHtml(replyUsername)}</span>: <span class="reply-text">${escapeHtml(replyContent)}</span></div>`;
         }
         let contentHTML = '';
         if (editingDMMessageId === msg.id) {
@@ -402,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Normal message view
             contentHTML = `
-                <div class="group-message-text">${escapeHtml(msg.text)}</div>
+                <div class="group-message-text">${escapeHtml(msg.content || '')}</div>
                 <div class="message-actions">
                     <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
                     <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
@@ -414,12 +400,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const html = `
             <div class="group-message-avatar">
-                <img src="${msg.avatar_url || selectedFriend.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
+                <img src="${msg.sender?.avatar_url || 'assets/default-avatar.png'}" alt="avatar">
             </div>
             <div class="group-message-content">
                 ${replyContextHTML}
                 <div class="group-message-header">
-                    <span class="group-message-username">${escapeHtml(msg.username || selectedFriend.username)}</span>
+                    <span class="group-message-username">${escapeHtml(msg.sender?.username || 'User')}</span>
                     <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
                 </div>
                 ${contentHTML}
@@ -489,19 +475,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (friendMessageForm) {
-        friendMessageForm.addEventListener('submit', (e) => {
+        friendMessageForm.addEventListener('submit', e => {
             e.preventDefault();
             sendFriendMessage();
         });
-
         sendFriendMessageBtn.addEventListener('click', sendFriendMessage);
-
-        friendMessageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendFriendMessage();
-            }
-        });
     }
 
     // --- DM MESSAGE ACTIONS (REPLY, EDIT, DELETE, REACTIONS) ---
@@ -515,45 +493,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = friendMessageInput.value.trim();
         if (!text && !selectedFile) return;
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        if (editingDMMessageId) {
-            // Save edit
-            socket.emit('friend_message_edit', {
-                message_id: editingDMMessageId,
-                new_content: text
-            });
-            // Remove edit input
-            const editRow = friendMessages.querySelector('.dm-edit-input-row');
-            if (editRow) editRow.remove();
-            editingDMMessageId = null;
-            friendMessageInput.value = '';
-            return;
-        }
-        // Normal send (with reply)
+
         const clientTempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-        const payload = {
+        let payload;
+        let event;
+
+        if (currentDMReplyTo) {
+            event = 'friend_message_reply';
+            payload = {
+                content: text,
+                sender_id: currentUser.id,
+                receiver_id: selectedFriend.id,
+                reply_to_message_id: currentDMReplyTo,
+                client_temp_id: clientTempId
+            };
+        } else {
+            event = 'friend_message_send';
+            payload = {
+                content: text,
+                sender_id: currentUser.id,
+                receiver_id: selectedFriend.id,
+                client_temp_id: clientTempId
+            };
+        }
+
+        // Optimistic UI update
+        const optimisticMessage = {
+            id: clientTempId,
             content: text,
+            sender: currentUser,
             sender_id: currentUser.id,
-            receiver_id: selectedFriend.id,
-            reply_to: currentDMReplyTo,
-            client_temp_id: clientTempId // for deduplication
+            created_at: new Date().toISOString(),
+            reply_to: currentDMReplyTo ? getDMMessageById(currentDMReplyTo) : null,
+            client_temp_id: clientTempId
         };
-        socket.emit('friend_message_send', payload, (ack) => {
-            // Server will send the message back via 'friend_message' event
-            // No need to add locally to avoid duplication
+        if (!friendChats[selectedFriend.id]) friendChats[selectedFriend.id] = [];
+        friendChats[selectedFriend.id].push(optimisticMessage);
+        appendOrUpdateFriendMessage(optimisticMessage);
+
+        socket.emit(event, payload, (ack) => {
+            if (ack && ack.status === 'error') {
+                console.error('Failed to send message:', ack.message);
+                // Optionally remove the optimistic message
+                const msgEl = friendMessages.querySelector(`.group-message[data-message-id="${clientTempId}"]`);
+                if (msgEl) msgEl.remove();
+            }
         });
+
         friendMessageInput.value = '';
         removeDMReplyPreview();
     }
 
     function getDMMessageById(id) {
-        if (!selectedFriend || !selectedFriend.id) return null;
         const chat = friendChats[selectedFriend.id] || [];
-        const msg = chat.find(m => m.id === id);
-        return msg ? {
-            id: msg.id,
-            text: msg.text,
-            username: msg.username
-        } : null;
+        return chat.find(m => m.id === id) || null;
     }
 
     // Handle message actions
@@ -664,42 +657,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
             const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
             if (!friendChats[friendId]) friendChats[friendId] = [];
-            // Deduplication: if sender, replace temp message with real one
-            if (data.client_temp_id && data.sender_id === currentUser.id) {
-                const idx = friendChats[friendId].findIndex(m => m.client_temp_id === data.client_temp_id);
-                if (idx !== -1) {
-                    // Replace temp with real
-                    friendChats[friendId][idx] = {
-                        id: data.id,
-                        text: data.content,
-                        isOwn: true,
-                        username: currentUser.username,
-                        avatar_url: currentUser.avatar_url,
-                        created_at: data.created_at,
-                        reply_to: data.reply_to_message_id ? getDMMessageById(data.reply_to_message_id) : null,
-                        client_temp_id: data.client_temp_id
-                    };
-                    renderFriendMessagesSmooth();
-                    return;
-                }
+
+            const existingIndex = friendChats[friendId].findIndex(m => m.id === data.id || (data.client_temp_id && m.client_temp_id === data.client_temp_id));
+
+            if (existingIndex !== -1) {
+                // Update existing message (e.g., replacing temp with real one)
+                friendChats[friendId][existingIndex] = data;
+            } else {
+                // Add new message
+                friendChats[friendId].push(data);
             }
-            // Prevent duplicate messages
-            if (!friendChats[friendId].some(m => m.id === data.id)) {
-                // Get the friend's info properly
-                const friendInfo = selectedFriend && selectedFriend.id === friendId ? selectedFriend : 
-                    { username: 'Friend', avatar_url: 'assets/default-avatar.png' };
-                
-                friendChats[friendId].push({
-                    id: data.id,
-                    text: data.content,
-                    isOwn: data.sender_id === currentUser.id,
-                    username: data.sender_id === currentUser.id ? currentUser.username : friendInfo.username,
-                    avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : friendInfo.avatar_url,
-                    created_at: data.created_at,
-                    reply_to: data.reply_to_message_id ? getDMMessageById(data.reply_to_message_id) : null,
-                    client_temp_id: data.client_temp_id
-                });
-                renderFriendMessagesSmooth();
+
+            if (selectedFriend && friendId === selectedFriend.id) {
+                appendOrUpdateFriendMessage(data);
+                const friendMessagesContainer = document.getElementById('friendMessages');
+                friendMessagesContainer.scrollTop = friendMessagesContainer.scrollHeight;
             }
         });
         socket.off('friend_message_update');

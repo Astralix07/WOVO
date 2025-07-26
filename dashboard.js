@@ -1025,16 +1025,13 @@ const settingsBtn = document.querySelector('.user-settings-btn');
 const sidebarSettingsBtn = document.querySelector('.nav-item:not(.theme-toggle) i.fa-cog').parentElement;
 const settingsPage = document.getElementById('settings-page');
 const closeSettingsBtn = document.querySelector('.close-settings');
+const defaultContent = document.getElementById('default-content');
 const settingsCategories = document.querySelectorAll('.settings-category');
 const settingsSections = document.querySelectorAll('.settings-section');
 
 // Function to open settings
 function openSettings() {
-    // Find and hide the currently active main content section
-    const activeContent = document.querySelector('.main-content-section.active');
-    if (activeContent) {
-        activeContent.classList.remove('active');
-    }
+    defaultContent.classList.remove('active');
     settingsPage.classList.remove('closing');
     settingsPage.classList.add('active');
     // Update username in settings

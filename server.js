@@ -46,6 +46,21 @@ app.get('/api/groups/:groupId/messages', async (req, res) => {
 });
 
 // Post a new message to a group
+// Get messages for a friend
+app.get('/api/friends/:userId/messages', async (req, res) => {
+  const { userId } = req.params;
+  const currentUserId = req.query.currentUserId; // Passed from client
+
+  const { data, error } = await supabase
+    .from('friend_messages')
+    .select('*, sender:sender_id(username, avatar_url), reply_to:reply_to_message_id(*, sender:sender_id(username, avatar_url))')
+    .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${userId}),(sender_id.eq.${userId},receiver_id.eq.${currentUserId})`)
+    .order('created_at', { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 app.post('/api/groups/:groupId/messages', async (req, res) => {
   const { groupId } = req.params;
   const { user_id, content } = req.body;
@@ -149,7 +164,7 @@ io.on('connection', (socket) => {
 
   // --- FRIENDS REAL-TIME MESSAGING ---
   socket.on('friend_message_send', async (msg, callback) => {
-    // msg: { sender_id, receiver_id, content, reply_to, client_temp_id }
+    // msg: { sender_id, receiver_id, content }
     if (!msg.sender_id || !msg.receiver_id || !msg.content) {
       if (callback) callback({ status: 'error', message: 'Missing data' });
       return;
@@ -160,19 +175,16 @@ io.on('connection', (socket) => {
         {
           sender_id: msg.sender_id,
           receiver_id: msg.receiver_id,
-          content: msg.content,
-          reply_to_message_id: msg.reply_to || null,
-          client_temp_id: msg.client_temp_id || null
+          content: msg.content
         }
       ])
-      .select('*')
+      .select('*, sender:sender_id(username, avatar_url)')
       .single();
     if (error) {
       if (callback) callback({ status: 'error', message: error.message });
       return;
     }
-    // Emit to sender
-    socket.emit('friend_message', data);
+
     // Emit to receiver if online
     const toSocketId = connectedUsers.get(msg.receiver_id);
     if (toSocketId) {
@@ -286,13 +298,12 @@ io.on('connection', (socket) => {
           reply_to_message_id: msg.reply_to_message_id
         }
       ])
-      .select('*')
+      .select('*, sender:sender_id(username, avatar_url), reply_to:reply_to_message_id(*, sender:sender_id(username, avatar_url))')
       .single();
     if (error) {
       if (callback) callback({ status: 'error', message: error.message });
       return;
     }
-    socket.emit('friend_message', data);
     const toSocketId = connectedUsers.get(msg.receiver_id);
     if (toSocketId) io.to(toSocketId).emit('friend_message', data);
     if (callback) callback({ status: 'ok' });
