@@ -35,8 +35,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainSections.groups.style.display = '';
                 mainSections.groups.classList.add('active');
             }
+
+            if (label === 'friends') {
+                selectDefaultFriend();
+            }
         });
     });
+
+    function selectDefaultFriend() {
+        const friendsList = document.getElementById('realFriendsList');
+        if (!friendsList) return;
+
+        // Use a MutationObserver to wait for friends to be loaded if they are added dynamically
+        const observer = new MutationObserver((mutationsList, observer) => {
+            const firstFriend = friendsList.querySelector('.friend-item');
+            if (firstFriend) {
+                const friendsTitle = document.getElementById('friends-title');
+                
+                // Remove active class from any other friend
+                document.querySelectorAll('.friend-item.active').forEach(item => item.classList.remove('active'));
+
+                // Activate the first friend and update the header
+                firstFriend.classList.add('active');
+                const friendName = firstFriend.querySelector('.friend-name')?.textContent;
+                if (friendName && friendsTitle) {
+                    friendsTitle.textContent = friendName;
+                }
+                observer.disconnect(); // We're done, so disconnect
+            }
+        });
+
+        // Start observing the friends list for child additions
+        observer.observe(friendsList, { childList: true, subtree: true });
+
+        // Also, check if the friend is already there
+        const firstFriend = friendsList.querySelector('.friend-item');
+        if (firstFriend) {
+            const friendsTitle = document.getElementById('friends-title');
+            document.querySelectorAll('.friend-item.active').forEach(item => item.classList.remove('active'));
+            firstFriend.classList.add('active');
+            const friendName = firstFriend.querySelector('.friend-name')?.textContent;
+            if (friendName && friendsTitle) {
+                friendsTitle.textContent = friendName;
+            }
+            observer.disconnect();
+        }
+    }
+
+    // --- FRIEND SELECTION LOGIC ---
+    const friendsListContainer = document.getElementById('realFriendsList');
+    if (friendsListContainer) {
+        friendsListContainer.addEventListener('click', (e) => {
+            const clickedFriend = e.target.closest('.friend-item');
+            if (!clickedFriend) return;
+
+            // Don't do anything if it's already active
+            if (clickedFriend.classList.contains('active')) return;
+
+            // Remove active class from all friends
+            document.querySelectorAll('.friend-item.active').forEach(item => item.classList.remove('active'));
+
+            // Add active class to clicked friend
+            clickedFriend.classList.add('active');
+
+            // Update header
+            const friendName = clickedFriend.querySelector('.friend-name')?.textContent;
+            const friendsTitle = document.getElementById('friends-title');
+            if (friendName && friendsTitle) {
+                friendsTitle.textContent = friendName;
+            }
+        });
+    }
 
     // --- MEDIA SHARING LOGIC ---
     const addAttachmentBtn = document.getElementById('addAttachmentBtn');
