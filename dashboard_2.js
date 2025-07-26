@@ -67,8 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (friendAvatarSrc && headerAvatar) {
                     headerAvatar.src = friendAvatarSrc;
                 }
-
-                updateProfileSidebar(firstFriend);
                 observer.disconnect(); // We're done, so disconnect
             }
         });
@@ -87,38 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 friendsTitle.textContent = friendName;
             }
             observer.disconnect();
-        }
-    }
-
-    function updateProfileSidebar(friendElement) {
-        if (!friendElement) return;
-
-        const sidebarAvatar = document.getElementById('profile-sidebar-avatar');
-        const sidebarUsername = document.getElementById('profile-sidebar-username');
-        const sidebarUserTag = document.querySelector('#friend-profile-sidebar .user-tag');
-        const sidebarStatus = document.querySelector('#friend-profile-sidebar .status-indicator');
-
-        const friendAvatarSrc = friendElement.querySelector('img')?.src;
-        const friendName = friendElement.querySelector('.friend-name')?.textContent;
-        const friendStatusIndicator = friendElement.querySelector('.status-indicator');
-
-        if (sidebarAvatar && friendAvatarSrc) {
-            sidebarAvatar.src = friendAvatarSrc;
-        }
-
-        if (sidebarUsername && friendName) {
-            sidebarUsername.textContent = friendName;
-        }
-
-        if (sidebarUserTag && friendName) {
-            // Assuming a placeholder tag for now, as it's not in the friend list item
-            sidebarUserTag.textContent = `${friendName}#0000`;
-        }
-
-        if (sidebarStatus && friendStatusIndicator) {
-            // Copy status class (e.g., 'online', 'offline')
-            sidebarStatus.className = friendStatusIndicator.className;
-            sidebarStatus.classList.add('status-indicator'); // Ensure base class is present
         }
     }
 
@@ -150,8 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (friendAvatarSrc && headerAvatar) {
                 headerAvatar.src = friendAvatarSrc;
             }
-
-            updateProfileSidebar(clickedFriend);
         });
     }
 
