@@ -149,7 +149,7 @@ io.on('connection', (socket) => {
 
   // --- FRIENDS REAL-TIME MESSAGING ---
   socket.on('friend_message_send', async (msg, callback) => {
-    // msg: { sender_id, receiver_id, content }
+    // msg: { sender_id, receiver_id, content, reply_to, client_temp_id }
     if (!msg.sender_id || !msg.receiver_id || !msg.content) {
       if (callback) callback({ status: 'error', message: 'Missing data' });
       return;
@@ -160,7 +160,9 @@ io.on('connection', (socket) => {
         {
           sender_id: msg.sender_id,
           receiver_id: msg.receiver_id,
-          content: msg.content
+          content: msg.content,
+          reply_to_message_id: msg.reply_to || null,
+          client_temp_id: msg.client_temp_id || null
         }
       ])
       .select('*')

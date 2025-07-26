@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
         const { data, error } = await supabase
             .from('friend_messages')
-            .select('*')
+            .select('*, reply_to:reply_to_message_id(*)')
             .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
             .or(`sender_id.eq.${friendId},receiver_id.eq.${friendId}`)
             .order('created_at', { ascending: true });
@@ -360,7 +360,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 isOwn: m.sender_id === currentUser.id,
                 username: m.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
                 avatar_url: m.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
-                created_at: m.created_at
+                created_at: m.created_at,
+                reply_to: m.reply_to ? {
+                    id: m.reply_to.id,
+                    text: m.reply_to.content,
+                    username: m.reply_to.sender_id === currentUser.id ? currentUser.username : selectedFriend.username
+                } : null,
+                is_edited: m.is_edited || false,
+                is_deleted: m.is_deleted || false
             }));
         }
     }
@@ -522,27 +529,22 @@ document.addEventListener('DOMContentLoaded', () => {
             client_temp_id: clientTempId // for deduplication
         };
         socket.emit('friend_message_send', payload, (ack) => {
-            // Optionally handle server ack
+            // Server will send the message back via 'friend_message' event
+            // No need to add locally to avoid duplication
         });
-        if (!friendChats[selectedFriend.id]) friendChats[selectedFriend.id] = [];
-        friendChats[selectedFriend.id].push({
-            id: clientTempId,
-            text,
-            isOwn: true,
-            username: currentUser.username,
-            avatar_url: currentUser.avatar_url,
-            created_at: new Date().toISOString(),
-            reply_to: currentDMReplyTo ? getDMMessageById(currentDMReplyTo) : null,
-            client_temp_id: clientTempId
-        });
-        renderFriendMessagesSmooth();
         friendMessageInput.value = '';
         removeDMReplyPreview();
     }
 
     function getDMMessageById(id) {
+        if (!selectedFriend || !selectedFriend.id) return null;
         const chat = friendChats[selectedFriend.id] || [];
-        return chat.find(m => m.id === id) || null;
+        const msg = chat.find(m => m.id === id);
+        return msg ? {
+            id: msg.id,
+            text: msg.text,
+            username: msg.username
+        } : null;
     }
 
     // Handle message actions
@@ -665,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         username: currentUser.username,
                         avatar_url: currentUser.avatar_url,
                         created_at: data.created_at,
-                        reply_to: data.reply_to ? getDMMessageById(data.reply_to) : null,
+                        reply_to: data.reply_to_message_id ? getDMMessageById(data.reply_to_message_id) : null,
                         client_temp_id: data.client_temp_id
                     };
                     renderFriendMessagesSmooth();
@@ -674,14 +676,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // Prevent duplicate messages
             if (!friendChats[friendId].some(m => m.id === data.id)) {
+                // Get the friend's info properly
+                const friendInfo = selectedFriend && selectedFriend.id === friendId ? selectedFriend : 
+                    { username: 'Friend', avatar_url: 'assets/default-avatar.png' };
+                
                 friendChats[friendId].push({
                     id: data.id,
                     text: data.content,
                     isOwn: data.sender_id === currentUser.id,
-                    username: data.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
-                    avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
+                    username: data.sender_id === currentUser.id ? currentUser.username : friendInfo.username,
+                    avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : friendInfo.avatar_url,
                     created_at: data.created_at,
-                    reply_to: data.reply_to ? getDMMessageById(data.reply_to) : null,
+                    reply_to: data.reply_to_message_id ? getDMMessageById(data.reply_to_message_id) : null,
                     client_temp_id: data.client_temp_id
                 });
                 renderFriendMessagesSmooth();
