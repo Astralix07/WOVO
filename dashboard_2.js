@@ -367,7 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SMOOTH DM MESSAGE RENDERING ---
     function appendOrUpdateFriendMessage(msg) {
-        // Check if message already exists in DOM
         let msgEl = friendMessages.querySelector(`.group-message[data-message-id="${msg.id}"]`);
         const isNew = !msgEl;
         const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
@@ -382,14 +381,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (msg.reply_to) {
             replyContextHTML = `<div class="reply-context"><span class="reply-username">@${escapeHtml(msg.reply_to.username)}</span>: <span class="reply-text">${escapeHtml(msg.reply_to.text)}</span></div>`;
         }
-        let editInputHTML = '';
+        let contentHTML = '';
         if (editingDMMessageId === msg.id) {
-            editInputHTML = `
+            // Only show the edit input row
+            contentHTML = `
                 <div class="dm-edit-input-row">
                     <input class="dm-edit-input" type="text" value="${escapeHtml(msg.text)}" />
                     <button class="save-edit">Save</button>
                     <button class="cancel-edit">Cancel</button>
                 </div>
+            `;
+        } else {
+            // Normal message view
+            contentHTML = `
+                <div class="group-message-text">${escapeHtml(msg.text)}</div>
+                <div class="message-actions">
+                    <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
+                    <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                    <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
+                </div>
+                <div class="message-reactions-container" data-message-id="${msg.id}">${reactionsHTML}</div>
             `;
         }
         const html = `
@@ -402,19 +414,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="group-message-username">${escapeHtml(msg.username || selectedFriend.username)}</span>
                     <span class="group-message-timestamp">${msg.created_at ? formatTimestamp(msg.created_at) : ''}</span>
                 </div>
-                <div class="group-message-text">${escapeHtml(msg.text)}</div>
-                ${editInputHTML}
-                <div class="message-actions">
-                    <button class="action-btn-icon reply" title="Reply"><i class="fas fa-reply"></i></button>
-                    <button class="action-btn-icon edit" title="Edit"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="action-btn-icon delete" title="Delete"><i class="fas fa-trash-alt"></i></button>
-                    <button class="action-btn-icon add-reaction" title="Add Reaction"><i class="fas fa-smile"></i></button>
-                </div>
-                <div class="message-reactions-container" data-message-id="${msg.id}">${reactionsHTML}</div>
+                ${contentHTML}
             </div>
         `;
         if (msgEl) {
-            // Update in place
             msgEl.className = `group-message${msg.isOwn ? ' own' : ''}`;
             msgEl.innerHTML = html;
             // Attach edit input events if in edit mode
@@ -435,15 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
         } else {
-            // Append new message
             msgEl = document.createElement('div');
             msgEl.className = `group-message${msg.isOwn ? ' own' : ''} new-message-animation`;
             msgEl.dataset.messageId = msg.id;
             msgEl.innerHTML = html;
             friendMessages.appendChild(msgEl);
-            // Remove animation class after animation
             setTimeout(() => msgEl.classList.remove('new-message-animation'), 400);
-            // Attach edit input events if in edit mode
             if (editingDMMessageId === msg.id) {
                 const editRow = msgEl.querySelector('.dm-edit-input-row');
                 const input = editRow.querySelector('.dm-edit-input');
@@ -513,26 +513,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         // Normal send (with reply)
+        const clientTempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
         const payload = {
             content: text,
             sender_id: currentUser.id,
             receiver_id: selectedFriend.id,
-            reply_to: currentDMReplyTo, // send reply_to if replying
-            // add media fields if needed
+            reply_to: currentDMReplyTo,
+            client_temp_id: clientTempId // for deduplication
         };
         socket.emit('friend_message_send', payload, (ack) => {
             // Optionally handle server ack
         });
-        // Optimistically add message for sender
         if (!friendChats[selectedFriend.id]) friendChats[selectedFriend.id] = [];
         friendChats[selectedFriend.id].push({
-            id: 'temp_' + Date.now(),
+            id: clientTempId,
             text,
             isOwn: true,
             username: currentUser.username,
             avatar_url: currentUser.avatar_url,
             created_at: new Date().toISOString(),
-            reply_to: currentDMReplyTo ? getDMMessageById(currentDMReplyTo) : null
+            reply_to: currentDMReplyTo ? getDMMessageById(currentDMReplyTo) : null,
+            client_temp_id: clientTempId
         });
         renderFriendMessagesSmooth();
         friendMessageInput.value = '';
@@ -652,6 +653,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
             const friendId = data.sender_id === currentUser.id ? data.receiver_id : data.sender_id;
             if (!friendChats[friendId]) friendChats[friendId] = [];
+            // Deduplication: if sender, replace temp message with real one
+            if (data.client_temp_id && data.sender_id === currentUser.id) {
+                const idx = friendChats[friendId].findIndex(m => m.client_temp_id === data.client_temp_id);
+                if (idx !== -1) {
+                    // Replace temp with real
+                    friendChats[friendId][idx] = {
+                        id: data.id,
+                        text: data.content,
+                        isOwn: true,
+                        username: currentUser.username,
+                        avatar_url: currentUser.avatar_url,
+                        created_at: data.created_at,
+                        reply_to: data.reply_to ? getDMMessageById(data.reply_to) : null,
+                        client_temp_id: data.client_temp_id
+                    };
+                    renderFriendMessagesSmooth();
+                    return;
+                }
+            }
             // Prevent duplicate messages
             if (!friendChats[friendId].some(m => m.id === data.id)) {
                 friendChats[friendId].push({
@@ -661,10 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     username: data.sender_id === currentUser.id ? currentUser.username : selectedFriend.username,
                     avatar_url: data.sender_id === currentUser.id ? currentUser.avatar_url : selectedFriend.avatar_url,
                     created_at: data.created_at,
-                    reply_to: data.reply_to ? getDMMessageById(data.reply_to) : null
+                    reply_to: data.reply_to ? getDMMessageById(data.reply_to) : null,
+                    client_temp_id: data.client_temp_id
                 });
-            }
-            if (selectedFriend && selectedFriend.id === friendId) {
                 renderFriendMessagesSmooth();
             }
         });
