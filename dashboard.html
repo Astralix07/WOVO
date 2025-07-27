@@ -313,7 +313,6 @@
                             <div class="message-input-container">
                                 <button type="button" id="addAttachmentBtn"><i class="fas fa-plus-circle"></i></button>
                                 <input type="text" id="groupMessageInput" placeholder="Message #group" autocomplete="off" maxlength="2000" />
-                                <button type="button" id="showTicketPresetsBtn"><i class="fas fa-ticket-alt"></i></button>
                                 <button type="button" id="sendGroupMessageBtn"><i class="fas fa-paper-plane"></i></button>
                             </div>
                         </form>
@@ -1221,22 +1220,5 @@
     <script src="dashboard.js"></script>
     <script src="dashboard_2.js"></script>
     <script src="components/group-settings.js"></script>
-
-    <!-- Ticket Presets Modal -->
-    <div id="ticketPresetsModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <header class="modal-header">
-                <h3>Create a Match Ticket</h3>
-                <button class="close-modal-btn" data-modal-id="ticketPresetsModal">&times;</button>
-            </header>
-            <div class="modal-body ticket-presets-grid">
-                <button class="ticket-preset-btn" data-ticket-type="4V4 LIMITED">4V4 LIMITED</button>
-                <button class="ticket-preset-btn" data-ticket-type="1V1">1V1</button>
-                <button class="ticket-preset-btn" data-ticket-type="4V4 UNLIMITED">4V4 UNLIMITED</button>
-                <button class="ticket-preset-btn" data-ticket-type="4V4 STATEWAR">4V4 STATEWAR</button>
-                <button class="ticket-preset-btn" data-ticket-type="4V4 CONTRA">4V4 CONTRA</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html> 

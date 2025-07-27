@@ -1031,7 +1031,10 @@ const settingsSections = document.querySelectorAll('.settings-section');
 
 // Function to open settings
 function openSettings() {
-    defaultContent.classList.remove('active');
+    const activeContent = document.querySelector('.main-content-section.active');
+    if (activeContent) {
+        activeContent.classList.remove('active');
+    }
     settingsPage.classList.remove('closing');
     settingsPage.classList.add('active');
     // Update username in settings

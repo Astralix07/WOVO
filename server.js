@@ -16,7 +16,6 @@ const io = new Server(server, {
 
 // Map to track connected users: userId -> socket.id
 const connectedUsers = new Map();
-const activeTickets = new Map();
 
 app.use(cors());
 app.use(express.json());
@@ -149,68 +148,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-
-  // --- Match Ticket Events ---
-
-  // When a user creates a ticket
-  socket.on('create_ticket', (data) => {
-    const { groupId, ticketType, user } = data;
-    const ticketId = `ticket_${Date.now()}`;
-
-    const ticket = {
-      id: ticketId,
-      type: ticketType,
-      groupId,
-      sender: user,
-      createdAt: new Date(),
-      status: 'open',
-      timer: null
-    };
-
-    // Set a 2-minute timer to automatically close the ticket
-    ticket.timer = setTimeout(() => {
-      if (activeTickets.has(ticketId)) {
-        io.to(groupId).emit('ticket_closed', { ticketId, reason: 'Expired' });
-        activeTickets.delete(ticketId);
-      }
-    }, 120000); // 2 minutes
-
-    activeTickets.set(ticketId, ticket);
-    io.to(groupId).emit('new_ticket', ticket);
-  });
-
-  // When a user responds to a ticket (accept/reject)
-  socket.on('ticket_response', (data) => {
-    const { ticketId, response, user } = data;
-    const ticket = activeTickets.get(ticketId);
-
-    if (ticket) {
-      if (response === 'accept') {
-        // Clear the auto-close timer
-        clearTimeout(ticket.timer);
-        // Notify all users in the group that the ticket is closed
-        io.to(ticket.groupId).emit('ticket_closed', { ticketId, reason: 'Accepted', acceptedBy: user });
-        // Remove the ticket from active tickets
-        activeTickets.delete(ticketId);
-      } else {
-        // Handle rejection if needed (e.g., track who rejected)
-        // For now, we'll just log it
-        console.log(`User ${user.username} rejected ticket ${ticketId}`);
-      }
-    }
-  });
-
-  // When the sender manually closes a ticket
-  socket.on('close_ticket', (data) => {
-    const { ticketId, userId } = data;
-    const ticket = activeTickets.get(ticketId);
-
-    if (ticket && ticket.sender.id === userId) {
-      clearTimeout(ticket.timer);
-      io.to(ticket.groupId).emit('ticket_closed', { ticketId, reason: 'Closed by sender' });
-      activeTickets.delete(ticketId);
+    console.log('User disconnected:', socket.id);
+    if (socket.userId) {
+      connectedUsers.delete(socket.userId);
     }
   });
 });
