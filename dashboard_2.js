@@ -169,11 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
             messageElement.classList.add('sent');
         }
 
+        // TODO: Fetch user details to display username and avatar
+        const senderUsername = isSender ? 'You' : 'Friend'; // Temporary placeholder
+
         messageElement.innerHTML = `
-            <img src="${msg.sender.avatar_url || 'assets/default-avatar.png'}" alt="avatar" class="message-avatar">
+            <img src="assets/default-avatar.png" alt="avatar" class="message-avatar">
             <div class="message-content">
                 <div class="message-header">
-                    <span class="message-username">${msg.sender.username}</span>
+                    <span class="message-username">${senderUsername}</span>
                     <span class="message-timestamp">${new Date(msg.created_at).toLocaleTimeString()}</span>
                 </div>
                 <div class="message-body">
