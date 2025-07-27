@@ -139,10 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(`/api/dms/${currentUser.id}/${friendId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const messages = await response.json();
 
             messagesContainer.innerHTML = ''; // Clear spinner
-            if (messages.length === 0) {
+            if (!Array.isArray(messages) || messages.length === 0) {
                 document.getElementById('dmChatStart').style.display = 'block';
             } else {
                 document.getElementById('dmChatStart').style.display = 'none';
