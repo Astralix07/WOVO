@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WOVO Dashboard</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
@@ -720,51 +719,37 @@
 
         <!-- Members Sidebar (Right) -->
         <aside class="members-sidebar">
-            <!-- Friend Profile Sidebar (hidden by default) -->
-            <div class="friend-profile-sidebar" id="friendProfileSidebar" style="display: none;">
-                <div class="friend-banner" id="friendBanner" style="background: var(--bg-tertiary);"></div>
-                <div class="friend-profile-avatar-wrapper">
-                    <img id="friendProfileAvatar" src="assets/default-avatar.png" alt="Friend Avatar">
-                </div>
-                <div class="friend-profile-info">
-                    <div class="friend-profile-name" id="friendProfileName">Friend Name</div>
-                    <div class="friend-profile-id">ID: <span id="friendProfileId">-</span></div>
-                </div>
+            <div class="members-header">
+                <h3>MEMBERS</h3>
             </div>
-            <!-- Group Members Sidebar (default) -->
-            <div class="group-members-sidebar" id="groupMembersSidebar">
-                <div class="members-header">
-                    <h3>MEMBERS</h3>
-                </div>
             
-                <!-- Member Categories -->
-                <div class="member-category">
-                    <h4>ONLINE — 3</h4>
-                    <div class="member-list">
-                        <div class="member-item">
-                            <div class="member-avatar">
-                                <div class="status-indicator online"></div>
-                            </div>
-                            <span class="member-name">User 1</span>
+            <!-- Member Categories -->
+            <div class="member-category">
+                <h4>ONLINE — 3</h4>
+                <div class="member-list">
+                    <div class="member-item">
+                        <div class="member-avatar">
+                            <div class="status-indicator online"></div>
                         </div>
-                        <div class="member-item">
-                            <div class="member-avatar">
-                                <div class="status-indicator online"></div>
-                            </div>
-                            <span class="member-name">User 2</span>
+                        <span class="member-name">User 1</span>
+                    </div>
+                    <div class="member-item">
+                        <div class="member-avatar">
+                            <div class="status-indicator online"></div>
                         </div>
+                        <span class="member-name">User 2</span>
                     </div>
                 </div>
+            </div>
 
-                <div class="member-category">
-                    <h4>OFFLINE — 1</h4>
-                    <div class="member-list">
-                        <div class="member-item">
-                            <div class="member-avatar">
-                                <div class="status-indicator offline"></div>
-                            </div>
-                            <span class="member-name">User 3</span>
+            <div class="member-category">
+                <h4>OFFLINE — 1</h4>
+                <div class="member-list">
+                    <div class="member-item">
+                        <div class="member-avatar">
+                            <div class="status-indicator offline"></div>
                         </div>
+                        <span class="member-name">User 3</span>
                     </div>
                 </div>
             </div>

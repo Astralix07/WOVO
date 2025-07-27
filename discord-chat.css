@@ -350,66 +350,6 @@
     color: #fff;
 }
 
-/* --- Friend Profile Sidebar --- */
-.friend-profile-sidebar {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0 0 24px 0;
-    width: 100%;
-    min-height: 100%;
-    background: var(--bg-secondary);
-}
-.friend-banner {
-    width: 100%;
-    height: 90px;
-    background-size: cover;
-    background-position: center;
-    border-radius: 0 0 16px 16px;
-    margin-bottom: -40px;
-}
-.friend-profile-avatar-wrapper {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: var(--bg-tertiary);
-    margin-top: -40px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 4px solid var(--bg-secondary);
-}
-.friend-profile-avatar-wrapper img {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-.friend-profile-info {
-    margin-top: 16px;
-    text-align: center;
-}
-.friend-profile-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-.friend-profile-id {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-family: monospace;
-    background: var(--bg-tertiary);
-    padding: 3px 8px;
-    border-radius: 6px;
-    margin-top: 2px;
-}
-
-.group-members-sidebar {
-    width: 100%;
-}
-
 .message-heading {
     font-size: 20px;
     font-weight: 600;
