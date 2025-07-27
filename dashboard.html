@@ -329,9 +329,18 @@
                     </div>
                 </header>
                 <div class="content-container">
-                    <div class="friend-detail-container">
-                        <div class="friend-detail-header">First Friend (Demo)</div>
-                        <div class="coming-soon">Coming Soon: Friend chat and details will appear here.</div>
+                    <div class="direct-message-container" id="directMessageContainer" style="display: flex; flex-direction: column; height: 100%;">
+                        <div class="messages-list" id="directMessages"></div>
+                        <div class="chat-start-info" id="dmChatStart" style="display:none;">
+                            <span>This is the beginning of your direct message history.</span>
+                        </div>
+                        <form class="message-form" id="dmMessageForm" autocomplete="off">
+                            <div class="message-input-wrapper">
+                                <button type="button" class="attach-btn" id="addDmAttachmentBtn"><i class="fas fa-plus-circle"></i></button>
+                                <input type="text" id="dmMessageInput" placeholder="Message @Friend" autocomplete="off" maxlength="2000" />
+                                <button type="submit" class="send-btn" id="sendDmBtn"><i class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

@@ -59,6 +59,22 @@ app.post('/api/groups/:groupId/messages', async (req, res) => {
   res.json(data);
 });
 
+// --- Direct Messaging API ---
+
+// Get messages between two users
+app.get('/api/dms/:user1_id/:user2_id', async (req, res) => {
+    const { user1_id, user2_id } = req.params;
+    const { data, error } = await supabase
+        .from('direct_messages')
+        .select('*, sender:sender_id(username, avatar_url), receiver:receiver_id(username, avatar_url)')
+        .or(`(sender_id.eq.${user1_id},receiver_id.eq.${user2_id}),(sender_id.eq.${user2_id},receiver_id.eq.${user1_id})`)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+});
+
 // --- Socket.IO for group messaging ---
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -145,6 +161,43 @@ io.on('connection', (socket) => {
     } else {
         if (callback) callback({ status: 'ok' });
     }
+  });
+
+  // Handle sending a direct message
+  socket.on('private_message_send', async (msg, callback) => {
+    // msg: { to_user_id, from_user_id, content, ... }
+    if (!msg.to_user_id || !msg.from_user_id) {
+        if (callback) callback({ status: 'error', message: 'Missing user data' });
+        return;
+    }
+
+    // 1. Save message to the database
+    const { data: savedMessage, error } = await supabase
+      .from('direct_messages')
+      .insert({
+        sender_id: msg.from_user_id,
+        receiver_id: msg.to_user_id,
+        content: msg.content
+      })
+      .select('*, sender:sender_id(username, avatar_url)')
+      .single();
+
+    if (error) {
+        console.error('Error saving DM:', error);
+        if (callback) callback({ status: 'error', message: error.message });
+        return;
+    }
+
+    // 2. Send message to the recipient if they are online
+    const toSocketId = connectedUsers.get(msg.to_user_id);
+    if (toSocketId) {
+        io.to(toSocketId).emit('private_message_receive', savedMessage);
+    }
+
+    // 3. Send message back to the sender for confirmation
+    socket.emit('private_message_receive', savedMessage);
+
+    if (callback) callback({ status: 'ok', message: savedMessage });
   });
 
   socket.on('disconnect', () => {

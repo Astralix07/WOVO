@@ -88,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let activeDmChannel = null;
+
     // --- FRIEND SELECTION LOGIC ---
     const friendsListContainer = document.getElementById('realFriendsList');
     if (friendsListContainer) {
@@ -116,8 +118,101 @@ document.addEventListener('DOMContentLoaded', () => {
             if (friendAvatarSrc && headerAvatar) {
                 headerAvatar.src = friendAvatarSrc;
             }
+
+            // Fetch and render DMs
+            const friendId = clickedFriend.dataset.userId;
+            if (friendId) {
+                fetchAndRenderDMs(friendId);
+            }
         });
     }
+
+    // --- DIRECT MESSAGING LOGIC ---
+
+    async function fetchAndRenderDMs(friendId) {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (!currentUser) return;
+
+        activeDmChannel = friendId;
+        const messagesContainer = document.getElementById('directMessages');
+        messagesContainer.innerHTML = '<div class="loading-spinner"></div>'; // Show loading spinner
+
+        try {
+            const response = await fetch(`/api/dms/${currentUser.id}/${friendId}`);
+            const messages = await response.json();
+
+            messagesContainer.innerHTML = ''; // Clear spinner
+            if (messages.length === 0) {
+                document.getElementById('dmChatStart').style.display = 'block';
+            } else {
+                document.getElementById('dmChatStart').style.display = 'none';
+                messages.forEach(msg => renderDirectMessage(msg));
+            }
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        } catch (error) {
+            console.error('Error fetching DMs:', error);
+            messagesContainer.innerHTML = '<p class="error-message">Could not load messages.</p>';
+        }
+    }
+
+    function renderDirectMessage(msg) {
+        const messagesContainer = document.getElementById('directMessages');
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const isSender = msg.sender_id === currentUser.id;
+
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message-item');
+        if (isSender) {
+            messageElement.classList.add('sent');
+        }
+
+        messageElement.innerHTML = `
+            <img src="${msg.sender.avatar_url || 'assets/default-avatar.png'}" alt="avatar" class="message-avatar">
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-username">${msg.sender.username}</span>
+                    <span class="message-timestamp">${new Date(msg.created_at).toLocaleTimeString()}</span>
+                </div>
+                <div class="message-body">
+                    ${msg.content}
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    const dmMessageForm = document.getElementById('dmMessageForm');
+    const dmMessageInput = document.getElementById('dmMessageInput');
+
+    if (dmMessageForm) {
+        dmMessageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const content = dmMessageInput.value.trim();
+            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+
+            if (content && activeDmChannel && currentUser) {
+                const messagePayload = {
+                    to_user_id: activeDmChannel,
+                    from_user_id: currentUser.id,
+                    content: content
+                };
+                socket.emit('private_message_send', messagePayload);
+                dmMessageInput.value = '';
+            }
+        });
+    }
+
+    socket.on('private_message_receive', (message) => {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        const isChatActive = (activeDmChannel === message.sender_id && message.receiver_id === currentUser.id) || 
+                             (activeDmChannel === message.receiver_id && message.sender_id === currentUser.id);
+
+        if (isChatActive) {
+            renderDirectMessage(message);
+        }
+        // TODO: Add notification for inactive chats
+    });
 
     // --- MEDIA SHARING LOGIC ---
     const addAttachmentBtn = document.getElementById('addAttachmentBtn');
