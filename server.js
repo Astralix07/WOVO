@@ -46,22 +46,6 @@ app.get('/api/groups/:groupId/messages', async (req, res) => {
 });
 
 // Post a new message to a group
-// --- Direct Messaging API ---
-
-// Get messages between two users
-app.get('/api/dms/:userId1/:userId2', async (req, res) => {
-  const { userId1, userId2 } = req.params;
-  const { data, error } = await supabase
-    .from('direct_messages')
-    .select('*, sender:sender_id(username, avatar_url), reply_to:reply_to_message_id(*, sender:sender_id(username, avatar_url))')
-    .or(`(sender_id.eq.${userId1},receiver_id.eq.${userId2}),(sender_id.eq.${userId2},receiver_id.eq.${userId1})`)
-    .order('created_at', { ascending: true })
-    .limit(100);
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
 app.post('/api/groups/:groupId/messages', async (req, res) => {
   const { groupId } = req.params;
   const { user_id, content } = req.body;
@@ -123,48 +107,6 @@ io.on('connection', (socket) => {
   socket.on('leave_group', (groupId) => {
     socket.leave(`group_${groupId}`);
   });
-
-  // --- DM Socket Events ---
-  socket.on('join_dm_room', (userId1, userId2) => {
-    const roomName = [userId1, userId2].sort().join('_');
-    socket.join(`dm_${roomName}`);
-  });
-
-  socket.on('leave_dm_room', (userId1, userId2) => {
-    const roomName = [userId1, userId2].sort().join('_');
-    socket.leave(`dm_${roomName}`);
-  });
-
-  socket.on('dm_message_send', async (msg, callback) => {
-    if (!msg.sender_id || !msg.receiver_id) {
-        if (callback) callback({ status: 'error', message: 'Missing sender or receiver ID' });
-        return;
-    }
-
-    const { data, error } = await supabase
-      .from('direct_messages')
-      .insert([{
-        sender_id: msg.sender_id,
-        receiver_id: msg.receiver_id,
-        content: msg.content || null,
-        media_url: msg.media_url,
-        media_type: msg.media_type,
-        client_temp_id: msg.client_temp_id,
-        reply_to_message_id: msg.reply_to_message_id
-      }])
-      .select('*, sender:sender_id(username, avatar_url), reply_to:reply_to_message_id(*, sender:sender_id(username, avatar_url))')
-      .single();
-
-    if (error) {
-        console.error('Error saving DM:', error);
-        if (callback) callback({ status: 'error', message: error.message });
-    } else {
-        const roomName = [msg.sender_id, msg.receiver_id].sort().join('_');
-        io.to(`dm_${roomName}`).emit('dm_message_receive', data);
-        if (callback) callback({ status: 'ok', messageId: data.id });
-    }
-  });
-
   // Handle sending a message
   socket.on('group_message_send', async (msg, callback) => {
     // msg: { groupId, user_id, content, ... }
