@@ -66,8 +66,12 @@ app.get('/api/dms/:user1_id/:user2_id', async (req, res) => {
     const { user1_id, user2_id } = req.params;
     const { data, error } = await supabase
         .from('direct_messages')
-        .select('*')
-        .or(`(sender_id.eq.${user1_id},receiver_id.eq.${user2_id}),(sender_id.eq.${user2_id},receiver_id.eq.${user1_id})`)
+        .select(`
+            *,
+            sender:sender_id (id, username, avatar_url),
+            receiver:receiver_id (id, username, avatar_url)
+        `)
+        .or(`and(sender_id.eq.${user1_id},receiver_id.eq.${user2_id}),and(sender_id.eq.${user2_id},receiver_id.eq.${user1_id})`)
         .order('created_at', { ascending: true })
         .limit(100);
 
