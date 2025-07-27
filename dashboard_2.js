@@ -88,7 +88,137 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let activeDmChannel = null;
+    // --- DIRECT MESSAGING LOGIC ---
+    const dmMessagesContainer = document.getElementById('dmMessages');
+    const dmMessageInput = document.getElementById('dmMessageInput');
+    const sendDmMessageBtn = document.getElementById('sendDmMessageBtn');
+    let activeDmUserId = null;
+
+    function formatTimestamp(isoString) {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    function renderDirectMessage(msg, isNew = false) {
+        if (!dmMessagesContainer) return;
+        if (document.querySelector(`.dm-message[data-message-id="${msg.id}"]`)) return;
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'group-message dm-message'; // Re-use group-message styles
+        msgDiv.dataset.messageId = msg.id;
+
+        if (isNew) {
+            msgDiv.classList.add('new-message-animation');
+        }
+
+        const DEFAULT_AVATAR = 'assets/default-avatar.png';
+
+        msgDiv.innerHTML = `
+            <div class="group-message-avatar">
+                <img src="${msg.sender?.avatar_url || DEFAULT_AVATAR}" alt="avatar">
+            </div>
+            <div class="group-message-content">
+                <div class="group-message-header">
+                    <span class="group-message-username">${escapeHtml(msg.sender?.username || 'User')}</span>
+                    <span class="group-message-timestamp">${formatTimestamp(msg.created_at)}</span>
+                </div>
+                <div class="group-message-text">${escapeHtml(msg.content)}</div>
+            </div>
+        `;
+
+        dmMessagesContainer.appendChild(msgDiv);
+        if (isNew) {
+            dmMessagesContainer.scrollTop = dmMessagesContainer.scrollHeight;
+        }
+    }
+
+    async function loadDirectMessages(friendId) {
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (!currentUser || !friendId) return;
+
+        // Leave previous DM room if any
+        if (activeDmUserId) {
+            socket.emit('leave_dm_room', currentUser.id, activeDmUserId);
+        }
+
+        activeDmUserId = friendId;
+        dmMessagesContainer.innerHTML = 'Loading messages...';
+
+        // Join new DM room
+        socket.emit('join_dm_room', currentUser.id, friendId);
+
+        // Fetch message history
+        try {
+            const response = await fetch(`/api/dms/${currentUser.id}/${friendId}`);
+            const messages = await response.json();
+            dmMessagesContainer.innerHTML = '';
+            if (messages.length === 0) {
+                document.getElementById('dmChatStart').style.display = 'block';
+            } else {
+                document.getElementById('dmChatStart').style.display = 'none';
+                messages.forEach(msg => renderDirectMessage(msg));
+            }
+            dmMessagesContainer.scrollTop = dmMessagesContainer.scrollHeight;
+        } catch (error) {
+            dmMessagesContainer.innerHTML = '<p>Could not load messages.</p>';
+            console.error('Error loading DMs:', error);
+        }
+    }
+
+    function sendDirectMessage() {
+        const content = dmMessageInput.value.trim();
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (!content || !currentUser || !activeDmUserId) return;
+
+        const messagePayload = {
+            sender_id: currentUser.id,
+            receiver_id: activeDmUserId,
+            content: content,
+            client_temp_id: `temp_${Date.now()}`
+        };
+
+        socket.emit('dm_message_send', messagePayload, (response) => {
+            if (response.status === 'error') {
+                showNotification(`Failed to send message: ${response.message}`, 'error');
+            } else {
+                dmMessageInput.value = '';
+            }
+        });
+    }
+
+    // Socket listener for incoming DMs
+    socket.on('dm_message_receive', (msg) => {
+        // Only render if the message belongs to the active chat
+        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
+        if (currentUser && activeDmUserId && 
+            ((msg.sender_id === currentUser.id && msg.receiver_id === activeDmUserId) || 
+             (msg.sender_id === activeDmUserId && msg.receiver_id === currentUser.id))) {
+            renderDirectMessage(msg, true);
+        }
+    });
+
+    // Event listeners for sending a message
+    if (sendDmMessageBtn) {
+        sendDmMessageBtn.addEventListener('click', sendDirectMessage);
+    }
+    if (dmMessageInput) {
+        dmMessageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendDirectMessage();
+            }
+        });
+    }
 
     // --- FRIEND SELECTION LOGIC ---
     const friendsListContainer = document.getElementById('realFriendsList');
@@ -119,103 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerAvatar.src = friendAvatarSrc;
             }
 
-            // Fetch and render DMs
+            // Load DMs for the selected friend
             const friendId = clickedFriend.dataset.userId;
-            if (friendId) {
-                fetchAndRenderDMs(friendId);
-            }
+            loadDirectMessages(friendId);
         });
     }
-
-    // --- DIRECT MESSAGING LOGIC ---
-
-    async function fetchAndRenderDMs(friendId) {
-        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        if (!currentUser) return;
-
-        activeDmChannel = friendId;
-        const messagesContainer = document.getElementById('directMessages');
-        messagesContainer.innerHTML = '<div class="loading-spinner"></div>'; // Show loading spinner
-
-        try {
-            const response = await fetch(`/api/dms/${currentUser.id}/${friendId}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const messages = await response.json();
-
-            messagesContainer.innerHTML = ''; // Clear spinner
-            if (!Array.isArray(messages) || messages.length === 0) {
-                document.getElementById('dmChatStart').style.display = 'block';
-            } else {
-                document.getElementById('dmChatStart').style.display = 'none';
-                messages.forEach(msg => renderDirectMessage(msg));
-            }
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        } catch (error) {
-            console.error('Error fetching DMs:', error);
-            messagesContainer.innerHTML = '<p class="error-message">Could not load messages.</p>';
-        }
-    }
-
-    function renderDirectMessage(msg) {
-        const messagesContainer = document.getElementById('directMessages');
-        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        const isSender = msg.sender_id === currentUser.id;
-
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message-item');
-        if (isSender) {
-            messageElement.classList.add('sent');
-        }
-
-        messageElement.innerHTML = `
-            <img src="${msg.sender.avatar_url || 'assets/default-avatar.png'}" alt="avatar" class="message-avatar">
-            <div class="message-content">
-                <div class="message-header">
-                    <span class="message-username">${msg.sender.username}</span>
-                    <span class="message-timestamp">${new Date(msg.created_at).toLocaleTimeString()}</span>
-                </div>
-                <div class="message-body">
-                    ${msg.content}
-                </div>
-            </div>
-        `;
-        messagesContainer.appendChild(messageElement);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    const dmMessageForm = document.getElementById('dmMessageForm');
-    const dmMessageInput = document.getElementById('dmMessageInput');
-
-    if (dmMessageForm) {
-        dmMessageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const content = dmMessageInput.value.trim();
-            const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-
-            if (content && activeDmChannel && currentUser) {
-                const messagePayload = {
-                    to_user_id: activeDmChannel,
-                    from_user_id: currentUser.id,
-                    content: content
-                };
-                socket.emit('private_message_send', messagePayload);
-                dmMessageInput.value = '';
-            }
-        });
-    }
-
-    socket.on('private_message_receive', (message) => {
-        const currentUser = JSON.parse(localStorage.getItem('wovo_user'));
-        const isChatActive = (activeDmChannel === message.sender_id && message.receiver_id === currentUser.id) || 
-                             (activeDmChannel === message.receiver_id && message.sender_id === currentUser.id);
-
-        if (isChatActive) {
-            renderDirectMessage(message);
-        }
-        // TODO: Add notification for inactive chats
-    });
 
     // --- MEDIA SHARING LOGIC ---
     const addAttachmentBtn = document.getElementById('addAttachmentBtn');
