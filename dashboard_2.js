@@ -382,4 +382,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- TYPING INDICATOR LOGIC ---
+    const groupMessageInput = document.getElementById('groupMessageInput');
+    let typingTimeout;
+
+    // Emit typing event when user types
+    groupMessageInput.addEventListener('input', () => {
+        if (!currentGroupId) return;
+
+        // Emit typing event
+        socket.emit('typing', currentGroupId);
+
+        // Reset timeout
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.emit('stop_typing', currentGroupId);
+        }, 3000);
+    });
+
+    // Listen for others typing
+    socket.on('user_typing', (data) => {
+        const { userId, groupId } = data;
+        if (groupId !== currentGroupId) return;
+
+        // Show typing indicator (e.g., "User is typing...")
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (!typingIndicator) {
+            const indicator = document.createElement('div');
+            indicator.id = 'typing-indicator';
+            indicator.className = 'typing-indicator';
+            indicator.textContent = `${getUsername(userId)} is typing...`;
+            document.getElementById('groupMessages').appendChild(indicator);
+        }
+    });
+
+    socket.on('user_stop_typing', (data) => {
+        const { userId, groupId } = data;
+        if (groupId !== currentGroupId) return;
+
+        // Remove typing indicator
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    });
 }); 

@@ -17,6 +17,9 @@ const io = new Server(server, {
 // Map to track connected users: userId -> socket.id
 const connectedUsers = new Map();
 
+// Track typing users per group
+const typingUsers = new Map();
+
 app.use(cors());
 app.use(express.json());
 
@@ -107,6 +110,55 @@ io.on('connection', (socket) => {
   socket.on('leave_group', (groupId) => {
     socket.leave(`group_${groupId}`);
   });
+
+  // Handle typing indicator events
+  socket.on('typing_start', (data) => {
+    const { groupId, userId, username } = data;
+    if (!groupId || !userId || !username) return;
+    
+    // Broadcast to other users in the group (excluding sender)
+    socket.to(`group_${groupId}`).emit('user_typing_start', {
+      userId,
+      username,
+      groupId
+    });
+  });
+
+  socket.on('typing_stop', (data) => {
+    const { groupId, userId } = data;
+    if (!groupId || !userId) return;
+    
+    // Broadcast to other users in the group (excluding sender)
+    socket.to(`group_${groupId}`).emit('user_typing_stop', {
+      userId,
+      groupId
+    });
+  });
+
+  socket.on('typing', (groupId) => {
+      if (!typingUsers.has(groupId)) {
+          typingUsers.set(groupId, new Set());
+      }
+      typingUsers.get(groupId).add(socket.userId);
+
+      // Broadcast to others in the group
+      socket.to(groupId).emit('user_typing', {
+          userId: socket.userId,
+          groupId,
+      });
+
+      // Stop typing after 3 seconds of inactivity
+      setTimeout(() => {
+          if (typingUsers.has(groupId) && typingUsers.get(groupId).has(socket.userId)) {
+              typingUsers.get(groupId).delete(socket.userId);
+              socket.to(groupId).emit('user_stop_typing', {
+                  userId: socket.userId,
+                  groupId,
+              });
+          }
+      }, 3000);
+  });
+
   // Handle sending a message
   socket.on('group_message_send', async (msg, callback) => {
     // msg: { groupId, user_id, content, ... }
@@ -152,6 +204,16 @@ io.on('connection', (socket) => {
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
     }
+    // Clean up typing users on disconnect
+    typingUsers.forEach((users, groupId) => {
+        if (users.has(socket.userId)) {
+            users.delete(socket.userId);
+            socket.to(groupId).emit('user_stop_typing', {
+                userId: socket.userId,
+                groupId,
+            });
+        }
+    });
   });
 });
 

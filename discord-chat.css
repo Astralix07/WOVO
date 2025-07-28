@@ -686,3 +686,14 @@
     background-size: 2000px 104px;
     animation: shimmer 2s linear infinite;
 } 
+
+.typing-indicator {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background-color: rgba(79, 84, 92, 0.4);
+    border-radius: 4px;
+    color: #dcddde;
+    font-size: 0.9em;
+    font-style: italic;
+    display: inline-block;
+} 
