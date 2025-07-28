@@ -284,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let mentionQuery = '';
     let selectedMentionIndex = 0;
 
+    const groupMessageInput = document.getElementById('groupMessageInput');
     if (groupMessageInput) {
         groupMessageInput.addEventListener('input', handleMentionInput);
     }
@@ -384,7 +385,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- TYPING INDICATOR LOGIC ---
-    const groupMessageInput = document.getElementById('groupMessageInput');
     let typingTimeout;
 
     // Emit typing event when user types
